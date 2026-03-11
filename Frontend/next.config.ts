@@ -4,6 +4,7 @@ import withPWA from "next-pwa";
 const nextConfig: NextConfig = {
   images: {
     unoptimized: true, // Keep your current setting
+    domains: ["lh3.googleusercontent.com"],
   },
   reactStrictMode: true,
   allowedDevOrigin: ["192.168.1.*", "localhost:*"],

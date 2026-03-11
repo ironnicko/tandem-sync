@@ -51,6 +51,9 @@ resource "aws_ecs_task_definition" "frontend" {
       portMappings = [
         { containerPort = 3000, protocol = "tcp" }
       ]
+      environment = [
+        for key, value in local.frontend_env : { name = key, value = value }
+      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {

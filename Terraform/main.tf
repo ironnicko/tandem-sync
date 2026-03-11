@@ -54,6 +54,10 @@ locals {
     for tuple in regexall("(\\w+)=(.*)", file("${path.module}/socket.env")) :
     tuple[0] => tuple[1]
   })
+  frontend_env = tomap({
+    for tuple in regexall("(\\w+)=(.*)", file("${path.module}/frontend.env")) :
+    tuple[0] => tuple[1]
+  })
 
 }
 

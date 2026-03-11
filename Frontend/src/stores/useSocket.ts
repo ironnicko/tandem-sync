@@ -21,12 +21,10 @@ export const useSocket = create<SocketState>((set, get) => {
         announceCb?.(msg.data.signalType, "info");
         break;
       case "userJoined":
-        // if (msg.data.userId !== auth.user.id) {
-          otherUsers.fetchUsersByIds([msg.data.userId]).then(() => {
-            const user = otherUsers.getUserById(msg.data.userId);
-            announceCb?.(`${user?.name || "Someone"} joined the ride`, "join");
-          });
-        // }
+        otherUsers.fetchUsersByIds([msg.data.userId]).then(() => {
+          const user = otherUsers.getUserById(msg.data.userId);
+          announceCb?.(`${user?.name || "Someone"} joined the ride`, "join");
+        });
         break;
       case "userLeft":
         const user = otherUsers.getUserById(msg.data.userId);

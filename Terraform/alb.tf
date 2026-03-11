@@ -1,4 +1,4 @@
-resource "aws_lb" "app" {
+bresource "aws_lb" "app" {
   name               = "tandem-sync-alb"
   internal           = false
   load_balancer_type = "application"
@@ -88,7 +88,7 @@ resource "aws_lb_listener_rule" "socket_rule_https" {
 
   condition {
     path_pattern {
-      values = ["/socket.io/*"]
+      values = ["/socket/*"]
     }
   }
 }
@@ -104,7 +104,7 @@ resource "aws_lb_listener_rule" "socket_rule_http" {
 
   condition {
     path_pattern {
-      values = ["/socket.io/*"]
+      values = ["/socket/*"]
     }
   }
 }
