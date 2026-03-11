@@ -12,23 +12,25 @@ export const useSocket = create<SocketState>((set, get) => {
 
   const handleMessage = (msg: any) => {
     const otherUsers = useOtherUsers.getState();
+    const userName = otherUsers.getUserById(msg.data.userId)?.name;
 
     switch (msg.eventType) {
       case "updateLocations":
         otherUsers.setUsersLocation(msg.data.locations);
         break;
       case "sentSignal":
-        announceCb?.(msg.data.signalType, "info");
+        announceCb?.(
+          `${userName || "Someone"} : ${msg.data.signalType}`,
+          "info",
+        );
         break;
       case "userJoined":
         otherUsers.fetchUsersByIds([msg.data.userId]).then(() => {
-          const user = otherUsers.getUserById(msg.data.userId);
-          announceCb?.(`${user?.name || "Someone"} joined the ride`, "join");
+          announceCb?.(`${userName || "Someone"} joined the ride`, "join");
         });
         break;
       case "userLeft":
-        const user = otherUsers.getUserById(msg.data.userId);
-        announceCb?.(`${user?.name || "Someone"} left the ride`, "info");
+        announceCb?.(`${userName || "Someone"} left the ride`, "info");
         otherUsers.setUserLocation(msg.data.userId, null);
         break;
     }

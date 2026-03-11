@@ -1,6 +1,8 @@
 "use client";
+
 import { GeoLocation, UserState } from "@/stores/types";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useMap } from "@vis.gl/react-google-maps";
 
 interface FitBoundsHandlerProps {
   fromLocation: GeoLocation | null;
@@ -13,52 +15,47 @@ export function FitBoundsHandler({
   toLocation,
   otherUsers,
 }: FitBoundsHandlerProps) {
+  const map = useMap();
+  const lastFitRef = useRef<string | null>(null);
+
   useEffect(() => {
-    const fitMapBounds = () => {
-      const bounds = new google.maps.LatLngBounds();
+    if (!map) return;
 
-      const points: GeoLocation[] = [];
+    const bounds = new google.maps.LatLngBounds();
+    const points: GeoLocation[] = [];
 
-      if (
-        fromLocation &&
-        isFinite(fromLocation.lat) &&
-        isFinite(fromLocation.lng)
-      ) {
-        points.push(fromLocation);
-      }
+    if (fromLocation) points.push(fromLocation);
+    if (toLocation) points.push(toLocation);
 
-      if (toLocation && isFinite(toLocation.lat) && isFinite(toLocation.lng)) {
-        points.push(toLocation);
-      }
+    Object.values(otherUsers).forEach((u) => {
+      if (u.location) points.push(u.location);
+    });
 
-      Object.values(otherUsers).forEach((u) => {
-        const location = u.location;
-        if (location && isFinite(location.lat) && isFinite(location.lng)) {
-          points.push(location);
-        }
-      });
+    if (points.length === 0) return;
 
-      if (points.length === 0) return;
+    // Create a hash to detect meaningful changes
+    const hash = JSON.stringify(points.map((p) => [p.lat, p.lng]));
+    if (hash === lastFitRef.current) return;
 
-      points.forEach((point) => {
-        bounds.extend(new google.maps.LatLng(point.lat, point.lng));
-      });
+    lastFitRef.current = hash;
 
-      const mapElement = document.querySelector("canvas"); // or your map ref
-      if (!mapElement) return;
+    points.forEach((p) => {
+      bounds.extend(new google.maps.LatLng(p.lat, p.lng));
+    });
 
-      const mapInstance = (window as any).googleMap as google.maps.Map;
-      if (!mapInstance) return;
+    if (points.length === 1) {
+      map.panTo(points[0]);
+      map.setZoom(15);
+      return;
+    }
 
-      mapInstance.fitBounds(bounds);
-    };
-
-    fitMapBounds();
-
-    // Optional: refit periodically if users move
-    // const intervalID = setInterval(fitMapBounds, 5000);
-    // return () => clearInterval(intervalID);
-  }, [fromLocation, toLocation, otherUsers]);
+    map.fitBounds(bounds, {
+      top: 120,
+      bottom: 350, // space for bottom sheet (Uber UI)
+      left: 120,
+      right: 120,
+    });
+  }, [map, fromLocation, toLocation, otherUsers]);
 
   return null;
 }

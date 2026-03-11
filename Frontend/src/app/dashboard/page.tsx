@@ -116,7 +116,7 @@ export default function DashboardPage() {
             })}
 
           <FitBoundsHandler
-            fromLocation={userLocation}
+            fromLocation={(user?.currentRide ? null : fromLocation) || userLocation}
             toLocation={toLocation}
             otherUsers={otherUsers}
           />
