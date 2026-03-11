@@ -79,12 +79,16 @@ export interface DashboardState {
 export interface UserState {
   id: string | null;
   name: string | null;
-  email: string | null;
+  email?: string | null;
+
   picture?: string | null;
-  createdAt: string | null;
-  lastLoginAt: string | null;
-  isActive: boolean | null;
-  currentRide: string | null;
+  emailVerified?: boolean | null;
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
+  lastLoginAt?: string | null;
+  isActive?: boolean | null;
+  currentRide?: string | null;
+
   location?: GeoLocation | null;
   pushSubscription?: PushSubscription | null;
 }
