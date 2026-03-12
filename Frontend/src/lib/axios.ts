@@ -1,52 +1,28 @@
-// lib/axios.ts
-import axios from "axios";
 import { useAuth } from "@/stores/useAuth";
+import axios from "axios";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
+  withCredentials: true,
 });
 
-// Request interceptor to attach access token
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   const { accessToken } = useAuth.getState();
   if (accessToken) {
-    //@ts-ignore
-    config.headers = config.headers ?? {};
     config.headers["Authorization"] = `Bearer ${accessToken}`;
   }
   return config;
 });
 
-// Response interceptor to handle 401 and refresh token
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const { response, config } = error;
-    const { refreshToken, logout } = useAuth.getState();
-
-    if (response?.status === 401 && refreshToken) {
-      try {
-        // Try refreshing token
-        const res = await fetch(process.env.NEXT_PUBLIC_API_URL + "/refresh", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken: refreshToken }),
-        });
-        if (!res.ok) throw new Error("Refresh failed");
-        const data = await res.json();
-        // Update Refreshed Tokens
-        useAuth.setState({ accessToken: data.accessToken })
-        config.headers["Authorization"] = `Bearer ${data.accessToken}`;
-
-        return api(config); // retry original request
-      } catch {
-        logout(); // failed refresh → logout
-        return Promise.reject(error);
-      }
+  (error) => {
+    if (error.response?.status === 401) {
+      useAuth.getState().logout();
+      window.location.href = `/signin?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
     }
-
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

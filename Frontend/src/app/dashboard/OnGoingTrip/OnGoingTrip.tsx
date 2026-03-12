@@ -30,7 +30,7 @@ export const OnGoingTrip = ({
   const {
     joinRide,
     sendSignal,
-    isConnected,
+    connect,
     inRoom,
     sendLocation,
     onAnnounce,
@@ -61,8 +61,10 @@ export const OnGoingTrip = ({
   }, [data?.ride?.rideCode, data?.ride?.endedAt]);
 
   useEffect(() => {
-    if (data?.ride?.rideCode && !inRoom)
+    if (data?.ride?.rideCode && !inRoom) {
+      connect();
       joinRide({ rideCode: data?.ride?.rideCode });
+    }
   }, [data?.ride?.rideCode, inRoom]);
 
   useEffect(() => {

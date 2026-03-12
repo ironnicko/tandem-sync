@@ -8,6 +8,8 @@ export class WebSocketManager {
   private readonly onMessage: (msg: any) => void;
   private readonly reconnectDelay = 5000;
 
+  private messageQueue: any[] = [];
+
   constructor(url: string, token: string, onMessage: (msg: any) => void) {
     this.url = url;
     this.token = token;
@@ -21,7 +23,15 @@ export class WebSocketManager {
       `${this.url}?token=${encodeURIComponent(this.token)}`,
     );
 
-    this.ws.onopen = () => console.log("[WS] Connected");
+    this.ws.onopen = () => {
+      console.log("[WS] Connected");
+
+      // flush queued messages
+      this.messageQueue.forEach((msg) => this.ws?.send(JSON.stringify(msg)));
+
+      this.messageQueue = [];
+    };
+
     this.ws.onmessage = (e) => this.onMessage(JSON.parse(e.data));
     this.ws.onclose = () => {
       console.log("[WS] Disconnected, retrying...");
@@ -40,7 +50,8 @@ export class WebSocketManager {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
     } else {
-      console.warn("[WS] Not connected, dropping message", data);
+      console.log("[WS] queueing message", data);
+      this.messageQueue.push(data);
     }
   }
 

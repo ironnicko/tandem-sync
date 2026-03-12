@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     domains: ["lh3.googleusercontent.com"],
   },
   reactStrictMode: true,
-  // allowedDevOrigin: ["192.168.1.*", "localhost:*"],
+  allowedDevOrigin: ["192.168.1.*", "localhost:*"],
   // pwa: {
   //   dest: "public", // Service worker and manifest go here
   //   register: true, // Auto-register SW

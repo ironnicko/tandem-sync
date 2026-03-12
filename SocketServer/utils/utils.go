@@ -1,27 +1,49 @@
 package utils
 
 import (
+	"fmt"
 	"log"
-	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 	"github.com/ironnicko/tandem-sync/SocketServer/config"
-	"github.com/ironnicko/tandem-sync/SocketServer/types"
 )
 
 func IsValidToken(authHeader string) (string, bool) {
 	cfg := config.Envs
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	claims := &types.JwtPayload{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
+
+	token, err := jwt.Parse(authHeader, func(token *jwt.Token) (interface{}, error) {
+		// Ensure correct signing method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
 		return []byte(cfg.JWTSECRET), nil
 	})
-	if err != nil || !token.Valid || claims.UserID == "" {
-		log.Println("JWT verification failed:", err)
+
+	if err != nil {
+		log.Println("JWT parse error:", err)
 		return "", false
 	}
-	return claims.UserID, true
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		log.Println("invalid token claims")
+		return "", false
+	}
+
+	userMap, ok := claims["user"].(map[string]interface{})
+	if !ok {
+		log.Println("invalid user claims")
+		return "", false
+	}
+
+	userID, ok := userMap["id"].(string)
+	if !ok || userID == "" {
+		log.Println("invalid user id")
+		return "", false
+	}
+
+	return userID, true
 }
 
 func BroadcastToRoom(skipConn *websocket.Conn, rideCode string, msg any) {

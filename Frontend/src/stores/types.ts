@@ -80,15 +80,13 @@ export interface UserState {
   id: string | null;
   name: string | null;
   email?: string | null;
-
-  picture?: string | null;
   emailVerified?: boolean | null;
   createdAt?: Date | null;
   updatedAt?: Date | null;
-  lastLoginAt?: string | null;
   isActive?: boolean | null;
   currentRide?: string | null;
-
+  image?: string | null;
+  picture?: string | null;
   location?: GeoLocation | null;
   pushSubscription?: PushSubscription | null;
 }
@@ -130,7 +128,7 @@ export interface AuthStore {
   login: (email: string, password: string) => Promise<boolean>;
   signup: (name: string, email: string, password: string) => Promise<boolean>;
   setUser: (user: UserState) => void;
-  loginWithGoogle: (respnose: AuthStore) => void;
+  loginWithGoogle: (redirect: string) => Promise<void>;
   logout: () => void;
 }
 

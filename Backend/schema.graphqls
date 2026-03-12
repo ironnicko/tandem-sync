@@ -30,15 +30,62 @@ input UpdateUserInput {
 }
 
 type User {
+  # from BetterAuthUser
   id: ID!
   name: String!
   email: String!
+  emailVerified: Boolean!
+  image: String
   createdAt: String!
-  lastLoginAt: String!
+  updatedAt: String!
+  # from DBUser
   isActive: Boolean!
   currentRide: String
-  picture: String
   pushSubscription: PushSubscription
+}
+
+type BetterAuthUser {
+  id: ID!
+  name: String!
+  email: String!
+  emailVerified: Boolean!
+  image: String
+  createdAt: String!
+  updatedAt: String!
+
+}
+
+type DBUser {
+  id: ID!
+  isActive: Boolean!
+  currentRide: String
+  pushSubscription: PushSubscription
+}
+
+type BetterAuthAccount {
+  id: ID!
+  accountId: String!
+  providerId: String!
+  userId: String!
+  accessToken: String
+  refreshToken: String
+  accessTokenExpiresAt: String
+  refreshTokenExpiresAt: String
+  scope: String
+  idToken: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+type BetterAuthSession {
+  id: ID!
+  userId: String!
+  token: String!
+  ipAddress: String
+  userAgent: String
+  expiresAt: String!
+  createdAt: String!
+  updatedAt: String!
 }
 
 type Ride {
@@ -115,8 +162,6 @@ type Mutation {
     status: String
     tripName: String
   ): Ride!
-
-  updateUser(input: UpdateUserInput!): User!
 
   joinRide(rideCode: String!, role: String!): Ride!
 

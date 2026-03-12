@@ -30,7 +30,7 @@ interface RideModalProps {
 
 export default function RideModal({ ride, onClose }: RideModalProps) {
   const { user, setUser } = useAuth();
-  const { joinRide, leaveRide } = useSocket.getState();
+  const { joinRide, leaveRide, connect, disconnect } = useSocket.getState();
   const { replaceRide } = useRides();
   const [currentRide, setCurrentRide] = useState(ride);
   const [formState, setFormState] = useState<Partial<UpdateRideParams>>({
@@ -51,6 +51,7 @@ export default function RideModal({ ride, onClose }: RideModalProps) {
     requestType?: "start" | "join" | "end" | "remove",
   ) {
     setButtonBusy(true);
+    connect();
     try {
       const now = new Date().toISOString();
       const updates: Partial<UpdateRideParams> = {
@@ -91,7 +92,10 @@ export default function RideModal({ ride, onClose }: RideModalProps) {
   }
 
   const handleStartRide = () => handleRideChange("started", "start");
-  const handleEndRide = () => handleRideChange("ended", "end");
+  const handleEndRide = () => {
+    handleRideChange("ended", "end");
+    disconnect();
+  };
   const handleSetCurrentRide = async () => {
     setUser({ ...user!, currentRide: currentRide.rideCode });
     await handleRideChange(null, "join");
@@ -102,6 +106,7 @@ export default function RideModal({ ride, onClose }: RideModalProps) {
     setUser({ ...user!, currentRide: null });
     await handleRideChange(null, "remove");
     leaveRide({ rideCode: ride.rideCode });
+    disconnect();
   };
 
   return (

@@ -24,6 +24,14 @@ models:
     model: github.com/ironnicko/tandem-sync/Backend/models.Ride
   User:
     model: github.com/ironnicko/tandem-sync/Backend/models.User
+  DBUser:
+    model: github.com/ironnicko/tandem-sync/Backend/models.DBUsers
+  BetterAuthAccount:
+    model: github.com/ironnicko/tandem-sync/Backend/models.BetterAuthAccount
+  BetterAuthSession:
+    model: github.com/ironnicko/tandem-sync/Backend/models.BetterAuthSession
+  BetterAuthUser:
+    model: github.com/ironnicko/tandem-sync/Backend/models.BetterAuthUser
   RideSettings:
     model: github.com/ironnicko/tandem-sync/Backend/models.RideSettings
   GeoLocation:

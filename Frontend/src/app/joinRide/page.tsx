@@ -5,10 +5,8 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { RIDE } from "@/lib/graphql/query";
 import { JOIN_RIDE } from "@/lib/graphql/mutation";
-import { RideState, UserState } from "@/stores/types";
+import { RideState } from "@/stores/types";
 import { useAuth } from "@/stores/useAuth";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import { gql } from "@apollo/client";
 import { useOtherUsers } from "@/stores/useOtherUsers";
 
 export default function JoinRidePage() {
@@ -62,30 +60,18 @@ export default function JoinRidePage() {
   };
 
   if (!rideCode)
-    return (
-      <ProtectedRoute>
-        <p className="text-center mt-10">No ride code provided.</p>
-      </ProtectedRoute>
-    );
+    return <p className="text-center mt-10">No ride code provided.</p>;
   if (!invitedBy)
     return (
-      <ProtectedRoute>
-        <p className="text-center mt-10">
-          You must be invited by someone to join.
-        </p>
-      </ProtectedRoute>
+      <p className="text-center mt-10">
+        You must be invited by someone to join.
+      </p>
     );
   if (loading)
-    return (
-      <ProtectedRoute>
-        <p className="text-center mt-10">Loading ride details...</p>
-      </ProtectedRoute>
-    );
+    return <p className="text-center mt-10">Loading ride details...</p>;
   if (error)
     return (
-      <ProtectedRoute>
-        <p className="text-center mt-10 text-red-500">Error: {error.message}</p>
-      </ProtectedRoute>
+      <p className="text-center mt-10 text-red-500">Error: {error.message}</p>
     );
 
   const ride = data?.ride;
@@ -93,53 +79,45 @@ export default function JoinRidePage() {
   const inviterName = getUserById(invitedBy)?.name || "Someone";
 
   if (participantCount == ride.settings.maxRiders && !joined)
-    return (
-      <ProtectedRoute>
-        <p className="text-center mt-10">Sorry This Trip is Full!</p>
-      </ProtectedRoute>
-    );
+    return <p className="text-center mt-10">Sorry This Trip is Full!</p>;
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-6">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-6 text-center">
-          {/* Header */}
-          <div className="mb-3 text-center">
-            <h2 className="flex flex-row gap-4 text-2xl font-bold items-center justify-center">
-              Join Ride
-            </h2>
-          </div>
-
-          {/* Ride Info */}
-          <div className="flex flex-col gap-2 mt-4 text-center">
-            <p className="text-lg font-medium text-gray-800">
-              {ride?.startName} → {ride?.destinationName}
-            </p>
-            <p className="font-medium text-gray-800">
-              {inviterName} invited you
-            </p>
-            <p className="text-gray-500">
-              {participantCount} participant
-              {participantCount !== 1 ? "s" : ""} joined
-            </p>
-          </div>
-
-          {/* Join Button */}
-          <button
-            onClick={handleJoin}
-            disabled={joining}
-            className={`mt-6 w-full cursor-pointer px-6 py-3 rounded-lg text-white font-medium transition-colors ${
-              joined
-                ? "bg-black cursor-pointer"
-                : joining
-                  ? "bg-gray-500 cursor-wait"
-                  : "bg-black hover:bg-gray-800"
-            }`}
-          >
-            {joined ? "Joined" : joining ? "Joining..." : "Join Ride"}
-          </button>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-6">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-6 text-center">
+        {/* Header */}
+        <div className="mb-3 text-center">
+          <h2 className="flex flex-row gap-4 text-2xl font-bold items-center justify-center">
+            Join Ride
+          </h2>
         </div>
+
+        {/* Ride Info */}
+        <div className="flex flex-col gap-2 mt-4 text-center">
+          <p className="text-lg font-medium text-gray-800">
+            {ride?.startName} → {ride?.destinationName}
+          </p>
+          <p className="font-medium text-gray-800">{inviterName} invited you</p>
+          <p className="text-gray-500">
+            {participantCount} participant
+            {participantCount !== 1 ? "s" : ""} joined
+          </p>
+        </div>
+
+        {/* Join Button */}
+        <button
+          onClick={handleJoin}
+          disabled={joining}
+          className={`mt-6 w-full cursor-pointer px-6 py-3 rounded-lg text-white font-medium transition-colors ${
+            joined
+              ? "bg-black cursor-pointer"
+              : joining
+                ? "bg-gray-500 cursor-wait"
+                : "bg-black hover:bg-gray-800"
+          }`}
+        >
+          {joined ? "Joined" : joining ? "Joining..." : "Join Ride"}
+        </button>
       </div>
-    </ProtectedRoute>
+    </div>
   );
 }

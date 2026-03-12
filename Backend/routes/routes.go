@@ -17,16 +17,6 @@ func InitializeRoutes(r *gin.Engine) {
 
 	v1 := r.Group("/api/v1")
 
-	// Google Oauth2
-	v1.GET("/auth/google", utils.GoogleLoginHandler)
-	v1.POST("/auth/google", utils.GoogleLoginHandler)
-	v1.GET("/auth/google/callback", utils.GoogleCallbackHandler)
-
-	// REST
-	v1.POST("/signup", handlers.Signup)
-	v1.POST("/login", handlers.Login)
-	v1.POST("/refresh", handlers.RefreshAccessToken)
-
 	// GraphQL
 	v1.GET("/playground", gin.WrapH(playground.Handler("GraphQL Playground", "/api/v1/graphql")))
 

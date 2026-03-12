@@ -10,7 +10,16 @@ import (
 )
 
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
+	// Read BetterAuth session cookie
+	cookie, err := r.Cookie("better-auth.session_data")
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	token := cookie.Value
+
+	// Validate token / session
 	userID, ok := utils.IsValidToken(token)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -29,6 +38,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		var msg types.Message
+
 		if err := conn.ReadJSON(&msg); err != nil {
 			log.Printf("❌ Disconnected %s: %v", userID, err)
 			utils.CleanupConnection(conn)
@@ -36,17 +46,21 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch msg.EventType {
+
 		case "joinRide":
-			var payload types.Payload = msg.Data
+			payload := msg.Data
 			handleJoinRide(conn, userID, payload)
+
 		case "leaveRide":
-			var payload types.Payload = msg.Data
+			payload := msg.Data
 			handleLeaveRide(conn, userID, payload)
+
 		case "sendLocation":
-			var payload types.Payload = msg.Data
+			payload := msg.Data
 			handleSendLocation(conn, userID, payload)
+
 		case "sendSignal":
-			var payload types.Payload = msg.Data
+			payload := msg.Data
 			handleSendSignal(conn, userID, payload)
 		}
 	}

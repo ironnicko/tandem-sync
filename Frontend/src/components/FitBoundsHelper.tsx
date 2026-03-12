@@ -10,6 +10,16 @@ interface FitBoundsHandlerProps {
   otherUsers: Record<string, UserState>;
 }
 
+const isValidLocation = (loc: GeoLocation | null): loc is GeoLocation => {
+  return (
+    !!loc &&
+    typeof loc.lat === "number" &&
+    typeof loc.lng === "number" &&
+    Number.isFinite(loc.lat) &&
+    Number.isFinite(loc.lng)
+  );
+}
+
 export function FitBoundsHandler({
   fromLocation,
   toLocation,
@@ -23,12 +33,14 @@ export function FitBoundsHandler({
 
     const bounds = new google.maps.LatLngBounds();
     const points: GeoLocation[] = [];
-
-    if (fromLocation) points.push(fromLocation);
-    if (toLocation) points.push(toLocation);
-
+    
+    if (isValidLocation(fromLocation)) points.push(fromLocation);
+    if (isValidLocation(toLocation)) points.push(toLocation);
+    
     Object.values(otherUsers).forEach((u) => {
-      if (u.location) points.push(u.location);
+      if (isValidLocation(u.location)) {
+        points.push(u.location);
+      }
     });
 
     if (points.length === 0) return;
@@ -40,7 +52,9 @@ export function FitBoundsHandler({
     lastFitRef.current = hash;
 
     points.forEach((p) => {
-      bounds.extend(new google.maps.LatLng(p.lat, p.lng));
+      if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) {
+        bounds.extend(new google.maps.LatLng(p.lat, p.lng));
+      }
     });
 
     if (points.length === 1) {

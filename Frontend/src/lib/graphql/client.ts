@@ -8,6 +8,7 @@ import api from "../axios";
         variables: operation.variables,
       })
         .then((result) => {
+
           observer.next(result.data);
           observer.complete();
         })

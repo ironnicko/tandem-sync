@@ -6,6 +6,7 @@ import { env } from "./src/env.js";
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { toNodeHandler } from "better-auth/node";
+import { bearer, jwt } from "better-auth/plugins";
 
 async function start() {
   await connectDB();
@@ -18,17 +19,32 @@ async function start() {
     emailAndPassword: {
       enabled: true,
     },
-
+    socialProviders: {
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID as string,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+        accessType: "offline",
+        prompt: "select_account consent",
+      },
+    },
+    plugins: [bearer()],
     trustedOrigins: [env.clientUrl],
+    session: {
+      cookieCache: {
+        enabled: true,
+        maxAge: 60 * 60, // 1 Hour, then Go falls back to DB lookup
+        strategy: "jwt",
+      },
+    },
   });
 
   const app = express();
 
   app.use(
     cors({
-      origin: env.hostUrl,
+      origin: env.clientUrl,
       credentials: true,
-    })
+    }),
   );
 
   app.use(express.json());

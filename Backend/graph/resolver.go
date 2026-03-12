@@ -21,7 +21,7 @@ func getGeoLocation(lat *float64, lng *float64) (*models.GeoLocation, error) {
 	return nil, fmt.Errorf("Latitute or Longitude wasn't provided!")
 }
 
-func getUsersFromRideParticipants(ctx context.Context, ride models.Ride, usersColl *mongo.Collection) (*[]models.User, error) {
+func getUsersFromRideParticipants(ctx context.Context, ride models.Ride, usersColl *mongo.Collection) (*[]models.DBUsers, error) {
 	participantIDs := make([]primitive.ObjectID, 0, len(ride.Participants))
 	for _, participant := range ride.Participants {
 		participantIDs = append(participantIDs, participant.UserID)
@@ -33,7 +33,7 @@ func getUsersFromRideParticipants(ctx context.Context, ride models.Ride, usersCo
 	}
 	defer cursor.Close(ctx)
 
-	var users []models.User
+	var users []models.DBUsers
 	if err := cursor.All(ctx, &users); err != nil {
 		return nil, fmt.Errorf("failed to decode users: %w", err)
 	}

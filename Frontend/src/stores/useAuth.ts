@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { AuthStore, storage } from "./types";
+import { AuthStore, storage, UserState } from "./types";
 import { toast } from "react-toastify";
 import { authClient } from "@/lib/auth";
+
 
 export const useAuth = create<AuthStore>()(
   persist(
@@ -14,28 +15,46 @@ export const useAuth = create<AuthStore>()(
 
       login: async (email, password) => {
         try {
-          const { data, error } = await authClient.signIn.email({
+          let authToken: string | null = null;
+
+          const { data: authData, error } = await authClient.signIn.email({
             email,
             password,
+            fetchOptions: {
+              onSuccess: (ctx) => {
+                authToken = ctx.response.headers.get("set-auth-token");
+              },
+            },
           });
 
-          if (error) {
-            toast.error(error.message || "Login failed");
+          if (error || !authData?.user) {
+            toast.error(error?.message || "Login failed");
             return false;
           }
-          const user = { ...data.user, picture: data.user?.image! };
+
+          const user = {
+            ...authData.user,
+          };
 
           set({
-            accessToken: null,
+            accessToken: authToken,
             refreshToken: null,
             isAuthenticated: true,
-            user: user ?? null,
+            user,
           });
 
           toast.success("Signed In Successfully!");
           return true;
         } catch (err) {
-          set(useAuth.getInitialState());
+          console.error(err);
+
+          set({
+            accessToken: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            user: null,
+          });
+
           toast.error("Login failed");
           return false;
         }
@@ -49,34 +68,57 @@ export const useAuth = create<AuthStore>()(
             name,
           });
 
-          if (error) {
-            toast.error(error.message || "Signup failed");
+          if (error || !data?.user) {
+            toast.error(error?.message || "Signup failed");
             return false;
           }
-          const user = { ...data.user, picture: data.user?.image! };
+
+          const user = {
+            ...data.user,
+            picture: data.user.image,
+          };
+
           set({
             accessToken: null,
             refreshToken: null,
             isAuthenticated: true,
-            user: user ?? null,
+            user,
           });
 
           toast.success("Signed Up Successfully!");
           return true;
         } catch (err) {
-          set(useAuth.getInitialState());
+          console.error(err);
+
+          set({
+            accessToken: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            user: null,
+          });
+
           toast.error("Signup failed");
           return false;
         }
       },
 
-      loginWithGoogle: async () => {
+      loginWithGoogle: async (redirect) => {
         try {
           await authClient.signIn.social({
             provider: "google",
+            callbackURL: window.location.origin + redirect,
           });
         } catch (err) {
+          console.error(err);
           toast.error("Google login failed");
+
+          set({
+            accessToken: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            user: null,
+          });
+
           throw err;
         }
       },
@@ -92,7 +134,12 @@ export const useAuth = create<AuthStore>()(
           console.error(err);
         }
 
-        set(useAuth.getInitialState());
+        set({
+          accessToken: null,
+          refreshToken: null,
+          isAuthenticated: false,
+          user: null,
+        });
       },
     }),
     {

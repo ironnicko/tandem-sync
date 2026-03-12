@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"sync"
 	"sync/atomic"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -22,22 +21,16 @@ import (
 
 // NewExecutableSchema creates an ExecutableSchema from the ResolverRoot interface.
 func NewExecutableSchema(cfg Config) graphql.ExecutableSchema {
-	return &executableSchema{
-		schema:     cfg.Schema,
-		resolvers:  cfg.Resolvers,
-		directives: cfg.Directives,
-		complexity: cfg.Complexity,
-	}
+	return &executableSchema{SchemaData: cfg.Schema, Resolvers: cfg.Resolvers, Directives: cfg.Directives, ComplexityRoot: cfg.Complexity}
 }
 
-type Config struct {
-	Schema     *ast.Schema
-	Resolvers  ResolverRoot
-	Directives DirectiveRoot
-	Complexity ComplexityRoot
-}
+type Config = graphql.Config[ResolverRoot, DirectiveRoot, ComplexityRoot]
 
 type ResolverRoot interface {
+	BetterAuthAccount() BetterAuthAccountResolver
+	BetterAuthSession() BetterAuthSessionResolver
+	BetterAuthUser() BetterAuthUserResolver
+	DBUser() DBUserResolver
 	Mutation() MutationResolver
 	Participant() ParticipantResolver
 	Query() QueryResolver
@@ -50,6 +43,49 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	BetterAuthAccount struct {
+		AccessToken           func(childComplexity int) int
+		AccessTokenExpiresAt  func(childComplexity int) int
+		AccountID             func(childComplexity int) int
+		CreatedAt             func(childComplexity int) int
+		ID                    func(childComplexity int) int
+		IDToken               func(childComplexity int) int
+		ProviderID            func(childComplexity int) int
+		RefreshToken          func(childComplexity int) int
+		RefreshTokenExpiresAt func(childComplexity int) int
+		Scope                 func(childComplexity int) int
+		UpdatedAt             func(childComplexity int) int
+		UserID                func(childComplexity int) int
+	}
+
+	BetterAuthSession struct {
+		CreatedAt func(childComplexity int) int
+		ExpiresAt func(childComplexity int) int
+		ID        func(childComplexity int) int
+		IPAddress func(childComplexity int) int
+		Token     func(childComplexity int) int
+		UpdatedAt func(childComplexity int) int
+		UserAgent func(childComplexity int) int
+		UserID    func(childComplexity int) int
+	}
+
+	BetterAuthUser struct {
+		CreatedAt     func(childComplexity int) int
+		Email         func(childComplexity int) int
+		EmailVerified func(childComplexity int) int
+		ID            func(childComplexity int) int
+		Image         func(childComplexity int) int
+		Name          func(childComplexity int) int
+		UpdatedAt     func(childComplexity int) int
+	}
+
+	DBUser struct {
+		CurrentRide      func(childComplexity int) int
+		ID               func(childComplexity int) int
+		IsActive         func(childComplexity int) int
+		PushSubscription func(childComplexity int) int
+	}
+
 	GeoLocation struct {
 		Lat func(childComplexity int) int
 		Lng func(childComplexity int) int
@@ -60,7 +96,6 @@ type ComplexityRoot struct {
 		JoinRide   func(childComplexity int, rideCode string, role string) int
 		SendSignal func(childComplexity int, rideCode string, signalType string, lat *float64, lng *float64) int
 		UpdateRide func(childComplexity int, rideCode string, requestType *string, maxRiders *int, visibility *string, endedAt *string, startedAt *string, status *string, tripName *string) int
-		UpdateUser func(childComplexity int, input models.UpdateUserInput) int
 	}
 
 	Participant struct {
@@ -122,19 +157,40 @@ type ComplexityRoot struct {
 		CreatedAt        func(childComplexity int) int
 		CurrentRide      func(childComplexity int) int
 		Email            func(childComplexity int) int
+		EmailVerified    func(childComplexity int) int
 		ID               func(childComplexity int) int
+		Image            func(childComplexity int) int
 		IsActive         func(childComplexity int) int
-		LastLoginAt      func(childComplexity int) int
 		Name             func(childComplexity int) int
-		Picture          func(childComplexity int) int
 		PushSubscription func(childComplexity int) int
+		UpdatedAt        func(childComplexity int) int
 	}
 }
 
+type BetterAuthAccountResolver interface {
+	AccessTokenExpiresAt(ctx context.Context, obj *models.BetterAuthAccount) (*string, error)
+	RefreshTokenExpiresAt(ctx context.Context, obj *models.BetterAuthAccount) (*string, error)
+
+	CreatedAt(ctx context.Context, obj *models.BetterAuthAccount) (string, error)
+	UpdatedAt(ctx context.Context, obj *models.BetterAuthAccount) (string, error)
+}
+type BetterAuthSessionResolver interface {
+	ExpiresAt(ctx context.Context, obj *models.BetterAuthSession) (string, error)
+	CreatedAt(ctx context.Context, obj *models.BetterAuthSession) (string, error)
+	UpdatedAt(ctx context.Context, obj *models.BetterAuthSession) (string, error)
+}
+type BetterAuthUserResolver interface {
+	ID(ctx context.Context, obj *models.BetterAuthUser) (string, error)
+
+	CreatedAt(ctx context.Context, obj *models.BetterAuthUser) (string, error)
+	UpdatedAt(ctx context.Context, obj *models.BetterAuthUser) (string, error)
+}
+type DBUserResolver interface {
+	ID(ctx context.Context, obj *models.DBUsers) (string, error)
+}
 type MutationResolver interface {
 	CreateRide(ctx context.Context, maxRiders int, visibility string, startLat float64, startLng float64, destinationLat float64, destinationLng float64, startName string, destinationName string, tripName string) (*models.Ride, error)
 	UpdateRide(ctx context.Context, rideCode string, requestType *string, maxRiders *int, visibility *string, endedAt *string, startedAt *string, status *string, tripName *string) (*models.Ride, error)
-	UpdateUser(ctx context.Context, input models.UpdateUserInput) (*models.User, error)
 	JoinRide(ctx context.Context, rideCode string, role string) (*models.Ride, error)
 	SendSignal(ctx context.Context, rideCode string, signalType string, lat *float64, lng *float64) (bool, error)
 }
@@ -160,42 +216,230 @@ type SignalResolver interface {
 }
 type UserResolver interface {
 	ID(ctx context.Context, obj *models.User) (string, error)
+
+	CreatedAt(ctx context.Context, obj *models.User) (string, error)
+	UpdatedAt(ctx context.Context, obj *models.User) (string, error)
 }
 
-type executableSchema struct {
-	schema     *ast.Schema
-	resolvers  ResolverRoot
-	directives DirectiveRoot
-	complexity ComplexityRoot
-}
+type executableSchema graphql.ExecutableSchemaState[ResolverRoot, DirectiveRoot, ComplexityRoot]
 
 func (e *executableSchema) Schema() *ast.Schema {
-	if e.schema != nil {
-		return e.schema
+	if e.SchemaData != nil {
+		return e.SchemaData
 	}
 	return parsedSchema
 }
 
 func (e *executableSchema) Complexity(ctx context.Context, typeName, field string, childComplexity int, rawArgs map[string]any) (int, bool) {
-	ec := executionContext{nil, e, 0, 0, nil}
+	ec := newExecutionContext(nil, e, nil)
 	_ = ec
 	switch typeName + "." + field {
 
+	case "BetterAuthAccount.accessToken":
+		if e.ComplexityRoot.BetterAuthAccount.AccessToken == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthAccount.AccessToken(childComplexity), true
+	case "BetterAuthAccount.accessTokenExpiresAt":
+		if e.ComplexityRoot.BetterAuthAccount.AccessTokenExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthAccount.AccessTokenExpiresAt(childComplexity), true
+	case "BetterAuthAccount.accountId":
+		if e.ComplexityRoot.BetterAuthAccount.AccountID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthAccount.AccountID(childComplexity), true
+	case "BetterAuthAccount.createdAt":
+		if e.ComplexityRoot.BetterAuthAccount.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthAccount.CreatedAt(childComplexity), true
+	case "BetterAuthAccount.id":
+		if e.ComplexityRoot.BetterAuthAccount.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthAccount.ID(childComplexity), true
+	case "BetterAuthAccount.idToken":
+		if e.ComplexityRoot.BetterAuthAccount.IDToken == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthAccount.IDToken(childComplexity), true
+	case "BetterAuthAccount.providerId":
+		if e.ComplexityRoot.BetterAuthAccount.ProviderID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthAccount.ProviderID(childComplexity), true
+	case "BetterAuthAccount.refreshToken":
+		if e.ComplexityRoot.BetterAuthAccount.RefreshToken == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthAccount.RefreshToken(childComplexity), true
+	case "BetterAuthAccount.refreshTokenExpiresAt":
+		if e.ComplexityRoot.BetterAuthAccount.RefreshTokenExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthAccount.RefreshTokenExpiresAt(childComplexity), true
+	case "BetterAuthAccount.scope":
+		if e.ComplexityRoot.BetterAuthAccount.Scope == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthAccount.Scope(childComplexity), true
+	case "BetterAuthAccount.updatedAt":
+		if e.ComplexityRoot.BetterAuthAccount.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthAccount.UpdatedAt(childComplexity), true
+	case "BetterAuthAccount.userId":
+		if e.ComplexityRoot.BetterAuthAccount.UserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthAccount.UserID(childComplexity), true
+
+	case "BetterAuthSession.createdAt":
+		if e.ComplexityRoot.BetterAuthSession.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthSession.CreatedAt(childComplexity), true
+	case "BetterAuthSession.expiresAt":
+		if e.ComplexityRoot.BetterAuthSession.ExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthSession.ExpiresAt(childComplexity), true
+	case "BetterAuthSession.id":
+		if e.ComplexityRoot.BetterAuthSession.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthSession.ID(childComplexity), true
+	case "BetterAuthSession.ipAddress":
+		if e.ComplexityRoot.BetterAuthSession.IPAddress == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthSession.IPAddress(childComplexity), true
+	case "BetterAuthSession.token":
+		if e.ComplexityRoot.BetterAuthSession.Token == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthSession.Token(childComplexity), true
+	case "BetterAuthSession.updatedAt":
+		if e.ComplexityRoot.BetterAuthSession.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthSession.UpdatedAt(childComplexity), true
+	case "BetterAuthSession.userAgent":
+		if e.ComplexityRoot.BetterAuthSession.UserAgent == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthSession.UserAgent(childComplexity), true
+	case "BetterAuthSession.userId":
+		if e.ComplexityRoot.BetterAuthSession.UserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthSession.UserID(childComplexity), true
+
+	case "BetterAuthUser.createdAt":
+		if e.ComplexityRoot.BetterAuthUser.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthUser.CreatedAt(childComplexity), true
+	case "BetterAuthUser.email":
+		if e.ComplexityRoot.BetterAuthUser.Email == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthUser.Email(childComplexity), true
+	case "BetterAuthUser.emailVerified":
+		if e.ComplexityRoot.BetterAuthUser.EmailVerified == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthUser.EmailVerified(childComplexity), true
+	case "BetterAuthUser.id":
+		if e.ComplexityRoot.BetterAuthUser.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthUser.ID(childComplexity), true
+	case "BetterAuthUser.image":
+		if e.ComplexityRoot.BetterAuthUser.Image == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthUser.Image(childComplexity), true
+	case "BetterAuthUser.name":
+		if e.ComplexityRoot.BetterAuthUser.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthUser.Name(childComplexity), true
+	case "BetterAuthUser.updatedAt":
+		if e.ComplexityRoot.BetterAuthUser.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BetterAuthUser.UpdatedAt(childComplexity), true
+
+	case "DBUser.currentRide":
+		if e.ComplexityRoot.DBUser.CurrentRide == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DBUser.CurrentRide(childComplexity), true
+	case "DBUser.id":
+		if e.ComplexityRoot.DBUser.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DBUser.ID(childComplexity), true
+	case "DBUser.isActive":
+		if e.ComplexityRoot.DBUser.IsActive == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DBUser.IsActive(childComplexity), true
+	case "DBUser.pushSubscription":
+		if e.ComplexityRoot.DBUser.PushSubscription == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DBUser.PushSubscription(childComplexity), true
+
 	case "GeoLocation.lat":
-		if e.complexity.GeoLocation.Lat == nil {
+		if e.ComplexityRoot.GeoLocation.Lat == nil {
 			break
 		}
 
-		return e.complexity.GeoLocation.Lat(childComplexity), true
+		return e.ComplexityRoot.GeoLocation.Lat(childComplexity), true
 	case "GeoLocation.lng":
-		if e.complexity.GeoLocation.Lng == nil {
+		if e.ComplexityRoot.GeoLocation.Lng == nil {
 			break
 		}
 
-		return e.complexity.GeoLocation.Lng(childComplexity), true
+		return e.ComplexityRoot.GeoLocation.Lng(childComplexity), true
 
 	case "Mutation.createRide":
-		if e.complexity.Mutation.CreateRide == nil {
+		if e.ComplexityRoot.Mutation.CreateRide == nil {
 			break
 		}
 
@@ -204,9 +448,9 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateRide(childComplexity, args["maxRiders"].(int), args["visibility"].(string), args["startLat"].(float64), args["startLng"].(float64), args["destinationLat"].(float64), args["destinationLng"].(float64), args["startName"].(string), args["destinationName"].(string), args["tripName"].(string)), true
+		return e.ComplexityRoot.Mutation.CreateRide(childComplexity, args["maxRiders"].(int), args["visibility"].(string), args["startLat"].(float64), args["startLng"].(float64), args["destinationLat"].(float64), args["destinationLng"].(float64), args["startName"].(string), args["destinationName"].(string), args["tripName"].(string)), true
 	case "Mutation.joinRide":
-		if e.complexity.Mutation.JoinRide == nil {
+		if e.ComplexityRoot.Mutation.JoinRide == nil {
 			break
 		}
 
@@ -215,9 +459,9 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.JoinRide(childComplexity, args["rideCode"].(string), args["role"].(string)), true
+		return e.ComplexityRoot.Mutation.JoinRide(childComplexity, args["rideCode"].(string), args["role"].(string)), true
 	case "Mutation.sendSignal":
-		if e.complexity.Mutation.SendSignal == nil {
+		if e.ComplexityRoot.Mutation.SendSignal == nil {
 			break
 		}
 
@@ -226,9 +470,9 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SendSignal(childComplexity, args["rideCode"].(string), args["signalType"].(string), args["lat"].(*float64), args["lng"].(*float64)), true
+		return e.ComplexityRoot.Mutation.SendSignal(childComplexity, args["rideCode"].(string), args["signalType"].(string), args["lat"].(*float64), args["lng"].(*float64)), true
 	case "Mutation.updateRide":
-		if e.complexity.Mutation.UpdateRide == nil {
+		if e.ComplexityRoot.Mutation.UpdateRide == nil {
 			break
 		}
 
@@ -237,78 +481,67 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateRide(childComplexity, args["rideCode"].(string), args["requestType"].(*string), args["maxRiders"].(*int), args["visibility"].(*string), args["endedAt"].(*string), args["startedAt"].(*string), args["status"].(*string), args["tripName"].(*string)), true
-	case "Mutation.updateUser":
-		if e.complexity.Mutation.UpdateUser == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_updateUser_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.UpdateUser(childComplexity, args["input"].(models.UpdateUserInput)), true
+		return e.ComplexityRoot.Mutation.UpdateRide(childComplexity, args["rideCode"].(string), args["requestType"].(*string), args["maxRiders"].(*int), args["visibility"].(*string), args["endedAt"].(*string), args["startedAt"].(*string), args["status"].(*string), args["tripName"].(*string)), true
 
 	case "Participant.joinedAt":
-		if e.complexity.Participant.JoinedAt == nil {
+		if e.ComplexityRoot.Participant.JoinedAt == nil {
 			break
 		}
 
-		return e.complexity.Participant.JoinedAt(childComplexity), true
+		return e.ComplexityRoot.Participant.JoinedAt(childComplexity), true
 	case "Participant.role":
-		if e.complexity.Participant.Role == nil {
+		if e.ComplexityRoot.Participant.Role == nil {
 			break
 		}
 
-		return e.complexity.Participant.Role(childComplexity), true
+		return e.ComplexityRoot.Participant.Role(childComplexity), true
 	case "Participant.userId":
-		if e.complexity.Participant.UserID == nil {
+		if e.ComplexityRoot.Participant.UserID == nil {
 			break
 		}
 
-		return e.complexity.Participant.UserID(childComplexity), true
+		return e.ComplexityRoot.Participant.UserID(childComplexity), true
 
 	case "PushSubscription.endpoint":
-		if e.complexity.PushSubscription.Endpoint == nil {
+		if e.ComplexityRoot.PushSubscription.Endpoint == nil {
 			break
 		}
 
-		return e.complexity.PushSubscription.Endpoint(childComplexity), true
+		return e.ComplexityRoot.PushSubscription.Endpoint(childComplexity), true
 	case "PushSubscription.keys":
-		if e.complexity.PushSubscription.Keys == nil {
+		if e.ComplexityRoot.PushSubscription.Keys == nil {
 			break
 		}
 
-		return e.complexity.PushSubscription.Keys(childComplexity), true
+		return e.ComplexityRoot.PushSubscription.Keys(childComplexity), true
 
 	case "PushSubscriptionKeys.auth":
-		if e.complexity.PushSubscriptionKeys.Auth == nil {
+		if e.ComplexityRoot.PushSubscriptionKeys.Auth == nil {
 			break
 		}
 
-		return e.complexity.PushSubscriptionKeys.Auth(childComplexity), true
+		return e.ComplexityRoot.PushSubscriptionKeys.Auth(childComplexity), true
 	case "PushSubscriptionKeys.p256dh":
-		if e.complexity.PushSubscriptionKeys.P256dh == nil {
+		if e.ComplexityRoot.PushSubscriptionKeys.P256dh == nil {
 			break
 		}
 
-		return e.complexity.PushSubscriptionKeys.P256dh(childComplexity), true
+		return e.ComplexityRoot.PushSubscriptionKeys.P256dh(childComplexity), true
 
 	case "Query.me":
-		if e.complexity.Query.Me == nil {
+		if e.ComplexityRoot.Query.Me == nil {
 			break
 		}
 
-		return e.complexity.Query.Me(childComplexity), true
+		return e.ComplexityRoot.Query.Me(childComplexity), true
 	case "Query.myRides":
-		if e.complexity.Query.MyRides == nil {
+		if e.ComplexityRoot.Query.MyRides == nil {
 			break
 		}
 
-		return e.complexity.Query.MyRides(childComplexity), true
+		return e.ComplexityRoot.Query.MyRides(childComplexity), true
 	case "Query.ride":
-		if e.complexity.Query.Ride == nil {
+		if e.ComplexityRoot.Query.Ride == nil {
 			break
 		}
 
@@ -317,9 +550,9 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Ride(childComplexity, args["rideCode"].(string)), true
+		return e.ComplexityRoot.Query.Ride(childComplexity, args["rideCode"].(string)), true
 	case "Query.user":
-		if e.complexity.Query.User == nil {
+		if e.ComplexityRoot.Query.User == nil {
 			break
 		}
 
@@ -328,9 +561,9 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.User(childComplexity, args["userId"].(string)), true
+		return e.ComplexityRoot.Query.User(childComplexity, args["userId"].(string)), true
 	case "Query.usersByIds":
-		if e.complexity.Query.UsersByIds == nil {
+		if e.ComplexityRoot.Query.UsersByIds == nil {
 			break
 		}
 
@@ -339,197 +572,203 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.UsersByIds(childComplexity, args["ids"].([]string)), true
+		return e.ComplexityRoot.Query.UsersByIds(childComplexity, args["ids"].([]string)), true
 
 	case "Ride.createdAt":
-		if e.complexity.Ride.CreatedAt == nil {
+		if e.ComplexityRoot.Ride.CreatedAt == nil {
 			break
 		}
 
-		return e.complexity.Ride.CreatedAt(childComplexity), true
+		return e.ComplexityRoot.Ride.CreatedAt(childComplexity), true
 	case "Ride.createdBy":
-		if e.complexity.Ride.CreatedBy == nil {
+		if e.ComplexityRoot.Ride.CreatedBy == nil {
 			break
 		}
 
-		return e.complexity.Ride.CreatedBy(childComplexity), true
+		return e.ComplexityRoot.Ride.CreatedBy(childComplexity), true
 	case "Ride.destination":
-		if e.complexity.Ride.Destination == nil {
+		if e.ComplexityRoot.Ride.Destination == nil {
 			break
 		}
 
-		return e.complexity.Ride.Destination(childComplexity), true
+		return e.ComplexityRoot.Ride.Destination(childComplexity), true
 	case "Ride.destinationName":
-		if e.complexity.Ride.DestinationName == nil {
+		if e.ComplexityRoot.Ride.DestinationName == nil {
 			break
 		}
 
-		return e.complexity.Ride.DestinationName(childComplexity), true
+		return e.ComplexityRoot.Ride.DestinationName(childComplexity), true
 	case "Ride.endedAt":
-		if e.complexity.Ride.EndedAt == nil {
+		if e.ComplexityRoot.Ride.EndedAt == nil {
 			break
 		}
 
-		return e.complexity.Ride.EndedAt(childComplexity), true
+		return e.ComplexityRoot.Ride.EndedAt(childComplexity), true
 	case "Ride.id":
-		if e.complexity.Ride.ID == nil {
+		if e.ComplexityRoot.Ride.ID == nil {
 			break
 		}
 
-		return e.complexity.Ride.ID(childComplexity), true
+		return e.ComplexityRoot.Ride.ID(childComplexity), true
 	case "Ride.participants":
-		if e.complexity.Ride.Participants == nil {
+		if e.ComplexityRoot.Ride.Participants == nil {
 			break
 		}
 
-		return e.complexity.Ride.Participants(childComplexity), true
+		return e.ComplexityRoot.Ride.Participants(childComplexity), true
 	case "Ride.rideCode":
-		if e.complexity.Ride.RideCode == nil {
+		if e.ComplexityRoot.Ride.RideCode == nil {
 			break
 		}
 
-		return e.complexity.Ride.RideCode(childComplexity), true
+		return e.ComplexityRoot.Ride.RideCode(childComplexity), true
 	case "Ride.settings":
-		if e.complexity.Ride.Settings == nil {
+		if e.ComplexityRoot.Ride.Settings == nil {
 			break
 		}
 
-		return e.complexity.Ride.Settings(childComplexity), true
+		return e.ComplexityRoot.Ride.Settings(childComplexity), true
 	case "Ride.start":
-		if e.complexity.Ride.Start == nil {
+		if e.ComplexityRoot.Ride.Start == nil {
 			break
 		}
 
-		return e.complexity.Ride.Start(childComplexity), true
+		return e.ComplexityRoot.Ride.Start(childComplexity), true
 	case "Ride.startName":
-		if e.complexity.Ride.StartName == nil {
+		if e.ComplexityRoot.Ride.StartName == nil {
 			break
 		}
 
-		return e.complexity.Ride.StartName(childComplexity), true
+		return e.ComplexityRoot.Ride.StartName(childComplexity), true
 	case "Ride.startedAt":
-		if e.complexity.Ride.StartedAt == nil {
+		if e.ComplexityRoot.Ride.StartedAt == nil {
 			break
 		}
 
-		return e.complexity.Ride.StartedAt(childComplexity), true
+		return e.ComplexityRoot.Ride.StartedAt(childComplexity), true
 	case "Ride.status":
-		if e.complexity.Ride.Status == nil {
+		if e.ComplexityRoot.Ride.Status == nil {
 			break
 		}
 
-		return e.complexity.Ride.Status(childComplexity), true
+		return e.ComplexityRoot.Ride.Status(childComplexity), true
 	case "Ride.tripName":
-		if e.complexity.Ride.TripName == nil {
+		if e.ComplexityRoot.Ride.TripName == nil {
 			break
 		}
 
-		return e.complexity.Ride.TripName(childComplexity), true
+		return e.ComplexityRoot.Ride.TripName(childComplexity), true
 
 	case "RideSettings.maxRiders":
-		if e.complexity.RideSettings.MaxRiders == nil {
+		if e.ComplexityRoot.RideSettings.MaxRiders == nil {
 			break
 		}
 
-		return e.complexity.RideSettings.MaxRiders(childComplexity), true
+		return e.ComplexityRoot.RideSettings.MaxRiders(childComplexity), true
 	case "RideSettings.visibility":
-		if e.complexity.RideSettings.Visibility == nil {
+		if e.ComplexityRoot.RideSettings.Visibility == nil {
 			break
 		}
 
-		return e.complexity.RideSettings.Visibility(childComplexity), true
+		return e.ComplexityRoot.RideSettings.Visibility(childComplexity), true
 
 	case "Signal.fromUser":
-		if e.complexity.Signal.FromUser == nil {
+		if e.ComplexityRoot.Signal.FromUser == nil {
 			break
 		}
 
-		return e.complexity.Signal.FromUser(childComplexity), true
+		return e.ComplexityRoot.Signal.FromUser(childComplexity), true
 	case "Signal.id":
-		if e.complexity.Signal.ID == nil {
+		if e.ComplexityRoot.Signal.ID == nil {
 			break
 		}
 
-		return e.complexity.Signal.ID(childComplexity), true
+		return e.ComplexityRoot.Signal.ID(childComplexity), true
 	case "Signal.location":
-		if e.complexity.Signal.Location == nil {
+		if e.ComplexityRoot.Signal.Location == nil {
 			break
 		}
 
-		return e.complexity.Signal.Location(childComplexity), true
+		return e.ComplexityRoot.Signal.Location(childComplexity), true
 	case "Signal.rideCode":
-		if e.complexity.Signal.RideCode == nil {
+		if e.ComplexityRoot.Signal.RideCode == nil {
 			break
 		}
 
-		return e.complexity.Signal.RideCode(childComplexity), true
+		return e.ComplexityRoot.Signal.RideCode(childComplexity), true
 	case "Signal.timestamp":
-		if e.complexity.Signal.Timestamp == nil {
+		if e.ComplexityRoot.Signal.Timestamp == nil {
 			break
 		}
 
-		return e.complexity.Signal.Timestamp(childComplexity), true
+		return e.ComplexityRoot.Signal.Timestamp(childComplexity), true
 	case "Signal.type":
-		if e.complexity.Signal.Type == nil {
+		if e.ComplexityRoot.Signal.Type == nil {
 			break
 		}
 
-		return e.complexity.Signal.Type(childComplexity), true
+		return e.ComplexityRoot.Signal.Type(childComplexity), true
 
 	case "User.createdAt":
-		if e.complexity.User.CreatedAt == nil {
+		if e.ComplexityRoot.User.CreatedAt == nil {
 			break
 		}
 
-		return e.complexity.User.CreatedAt(childComplexity), true
+		return e.ComplexityRoot.User.CreatedAt(childComplexity), true
 	case "User.currentRide":
-		if e.complexity.User.CurrentRide == nil {
+		if e.ComplexityRoot.User.CurrentRide == nil {
 			break
 		}
 
-		return e.complexity.User.CurrentRide(childComplexity), true
+		return e.ComplexityRoot.User.CurrentRide(childComplexity), true
 	case "User.email":
-		if e.complexity.User.Email == nil {
+		if e.ComplexityRoot.User.Email == nil {
 			break
 		}
 
-		return e.complexity.User.Email(childComplexity), true
+		return e.ComplexityRoot.User.Email(childComplexity), true
+	case "User.emailVerified":
+		if e.ComplexityRoot.User.EmailVerified == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.EmailVerified(childComplexity), true
 	case "User.id":
-		if e.complexity.User.ID == nil {
+		if e.ComplexityRoot.User.ID == nil {
 			break
 		}
 
-		return e.complexity.User.ID(childComplexity), true
+		return e.ComplexityRoot.User.ID(childComplexity), true
+	case "User.image":
+		if e.ComplexityRoot.User.Image == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.Image(childComplexity), true
 	case "User.isActive":
-		if e.complexity.User.IsActive == nil {
+		if e.ComplexityRoot.User.IsActive == nil {
 			break
 		}
 
-		return e.complexity.User.IsActive(childComplexity), true
-	case "User.lastLoginAt":
-		if e.complexity.User.LastLoginAt == nil {
-			break
-		}
-
-		return e.complexity.User.LastLoginAt(childComplexity), true
+		return e.ComplexityRoot.User.IsActive(childComplexity), true
 	case "User.name":
-		if e.complexity.User.Name == nil {
+		if e.ComplexityRoot.User.Name == nil {
 			break
 		}
 
-		return e.complexity.User.Name(childComplexity), true
-	case "User.picture":
-		if e.complexity.User.Picture == nil {
-			break
-		}
-
-		return e.complexity.User.Picture(childComplexity), true
+		return e.ComplexityRoot.User.Name(childComplexity), true
 	case "User.pushSubscription":
-		if e.complexity.User.PushSubscription == nil {
+		if e.ComplexityRoot.User.PushSubscription == nil {
 			break
 		}
 
-		return e.complexity.User.PushSubscription(childComplexity), true
+		return e.ComplexityRoot.User.PushSubscription(childComplexity), true
+	case "User.updatedAt":
+		if e.ComplexityRoot.User.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.UpdatedAt(childComplexity), true
 
 	}
 	return 0, false
@@ -537,7 +776,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
-	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
+	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputPushSubscriptionInput,
 		ec.unmarshalInputPushSubscriptionKeysInput,
@@ -555,9 +794,9 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 				ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
 				data = ec._Query(ctx, opCtx.Operation.SelectionSet)
 			} else {
-				if atomic.LoadInt32(&ec.pendingDeferred) > 0 {
-					result := <-ec.deferredResults
-					atomic.AddInt32(&ec.pendingDeferred, -1)
+				if atomic.LoadInt32(&ec.PendingDeferred) > 0 {
+					result := <-ec.DeferredResults
+					atomic.AddInt32(&ec.PendingDeferred, -1)
 					data = result.Result
 					response.Path = result.Path
 					response.Label = result.Label
@@ -569,8 +808,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			var buf bytes.Buffer
 			data.MarshalGQL(&buf)
 			response.Data = buf.Bytes()
-			if atomic.LoadInt32(&ec.deferred) > 0 {
-				hasNext := atomic.LoadInt32(&ec.pendingDeferred) > 0
+			if atomic.LoadInt32(&ec.Deferred) > 0 {
+				hasNext := atomic.LoadInt32(&ec.PendingDeferred) > 0
 				response.HasNext = &hasNext
 			}
 
@@ -598,44 +837,22 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 }
 
 type executionContext struct {
-	*graphql.OperationContext
-	*executableSchema
-	deferred        int32
-	pendingDeferred int32
-	deferredResults chan graphql.DeferredResult
+	*graphql.ExecutionContextState[ResolverRoot, DirectiveRoot, ComplexityRoot]
 }
 
-func (ec *executionContext) processDeferredGroup(dg graphql.DeferredGroup) {
-	atomic.AddInt32(&ec.pendingDeferred, 1)
-	go func() {
-		ctx := graphql.WithFreshResponseContext(dg.Context)
-		dg.FieldSet.Dispatch(ctx)
-		ds := graphql.DeferredResult{
-			Path:   dg.Path,
-			Label:  dg.Label,
-			Result: dg.FieldSet,
-			Errors: graphql.GetErrors(ctx),
-		}
-		// null fields should bubble up
-		if dg.FieldSet.Invalids > 0 {
-			ds.Result = graphql.Null
-		}
-		ec.deferredResults <- ds
-	}()
-}
-
-func (ec *executionContext) introspectSchema() (*introspection.Schema, error) {
-	if ec.DisableIntrospection {
-		return nil, errors.New("introspection disabled")
+func newExecutionContext(
+	opCtx *graphql.OperationContext,
+	execSchema *executableSchema,
+	deferredResults chan graphql.DeferredResult,
+) executionContext {
+	return executionContext{
+		ExecutionContextState: graphql.NewExecutionContextState[ResolverRoot, DirectiveRoot, ComplexityRoot](
+			opCtx,
+			(*graphql.ExecutableSchemaState[ResolverRoot, DirectiveRoot, ComplexityRoot])(execSchema),
+			parsedSchema,
+			deferredResults,
+		),
 	}
-	return introspection.WrapSchema(ec.Schema()), nil
-}
-
-func (ec *executionContext) introspectType(name string) (*introspection.Type, error) {
-	if ec.DisableIntrospection {
-		return nil, errors.New("introspection disabled")
-	}
-	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
 var sources = []*ast.Source{
@@ -671,15 +888,62 @@ input UpdateUserInput {
 }
 
 type User {
+  # from BetterAuthUser
   id: ID!
   name: String!
   email: String!
+  emailVerified: Boolean!
+  image: String
   createdAt: String!
-  lastLoginAt: String!
+  updatedAt: String!
+  # from DBUser
   isActive: Boolean!
   currentRide: String
-  picture: String
   pushSubscription: PushSubscription
+}
+
+type BetterAuthUser {
+  id: ID!
+  name: String!
+  email: String!
+  emailVerified: Boolean!
+  image: String
+  createdAt: String!
+  updatedAt: String!
+
+}
+
+type DBUser {
+  id: ID!
+  isActive: Boolean!
+  currentRide: String
+  pushSubscription: PushSubscription
+}
+
+type BetterAuthAccount {
+  id: ID!
+  accountId: String!
+  providerId: String!
+  userId: String!
+  accessToken: String
+  refreshToken: String
+  accessTokenExpiresAt: String
+  refreshTokenExpiresAt: String
+  scope: String
+  idToken: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+type BetterAuthSession {
+  id: ID!
+  userId: String!
+  token: String!
+  ipAddress: String
+  userAgent: String
+  expiresAt: String!
+  createdAt: String!
+  updatedAt: String!
 }
 
 type Ride {
@@ -756,8 +1020,6 @@ type Mutation {
     status: String
     tripName: String
   ): Ride!
-
-  updateUser(input: UpdateUserInput!): User!
 
   joinRide(rideCode: String!, role: String!): Ride!
 
@@ -915,17 +1177,6 @@ func (ec *executionContext) field_Mutation_updateRide_args(ctx context.Context, 
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_updateUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateUserInput2githubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUpdateUserInput)
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1022,6 +1273,911 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
+func (ec *executionContext) _BetterAuthAccount_id(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthAccount_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthAccount_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthAccount_accountId(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthAccount_accountId,
+		func(ctx context.Context) (any, error) {
+			return obj.AccountID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthAccount_accountId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthAccount_providerId(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthAccount_providerId,
+		func(ctx context.Context) (any, error) {
+			return obj.ProviderID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthAccount_providerId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthAccount_userId(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthAccount_userId,
+		func(ctx context.Context) (any, error) {
+			return obj.UserID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthAccount_userId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthAccount_accessToken(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthAccount_accessToken,
+		func(ctx context.Context) (any, error) {
+			return obj.AccessToken, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthAccount_accessToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthAccount_refreshToken(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthAccount_refreshToken,
+		func(ctx context.Context) (any, error) {
+			return obj.RefreshToken, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthAccount_refreshToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthAccount_accessTokenExpiresAt(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthAccount_accessTokenExpiresAt,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.BetterAuthAccount().AccessTokenExpiresAt(ctx, obj)
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthAccount_accessTokenExpiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthAccount",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthAccount_refreshTokenExpiresAt(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthAccount_refreshTokenExpiresAt,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.BetterAuthAccount().RefreshTokenExpiresAt(ctx, obj)
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthAccount_refreshTokenExpiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthAccount",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthAccount_scope(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthAccount_scope,
+		func(ctx context.Context) (any, error) {
+			return obj.Scope, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthAccount_scope(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthAccount_idToken(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthAccount_idToken,
+		func(ctx context.Context) (any, error) {
+			return obj.IDToken, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthAccount_idToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthAccount_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthAccount_createdAt,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.BetterAuthAccount().CreatedAt(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthAccount_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthAccount",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthAccount_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthAccount_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.BetterAuthAccount().UpdatedAt(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthAccount_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthAccount",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthSession_id(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthSession_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthSession_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthSession_userId(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthSession_userId,
+		func(ctx context.Context) (any, error) {
+			return obj.UserID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthSession_userId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthSession_token(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthSession_token,
+		func(ctx context.Context) (any, error) {
+			return obj.Token, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthSession_token(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthSession_ipAddress(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthSession_ipAddress,
+		func(ctx context.Context) (any, error) {
+			return obj.IPAddress, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthSession_ipAddress(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthSession_userAgent(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthSession_userAgent,
+		func(ctx context.Context) (any, error) {
+			return obj.UserAgent, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthSession_userAgent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthSession_expiresAt(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthSession_expiresAt,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.BetterAuthSession().ExpiresAt(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthSession_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthSession",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthSession_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthSession_createdAt,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.BetterAuthSession().CreatedAt(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthSession_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthSession",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthSession_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthSession_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.BetterAuthSession().UpdatedAt(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthSession_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthSession",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthUser_id(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthUser_id,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.BetterAuthUser().ID(ctx, obj)
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthUser_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthUser",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthUser_name(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthUser_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthUser_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthUser_email(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthUser_email,
+		func(ctx context.Context) (any, error) {
+			return obj.Email, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthUser_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthUser_emailVerified(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthUser_emailVerified,
+		func(ctx context.Context) (any, error) {
+			return obj.EmailVerified, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthUser_emailVerified(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthUser_image(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthUser_image,
+		func(ctx context.Context) (any, error) {
+			return obj.Image, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthUser_image(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthUser_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthUser_createdAt,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.BetterAuthUser().CreatedAt(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthUser_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthUser",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BetterAuthUser_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.BetterAuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BetterAuthUser_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.BetterAuthUser().UpdatedAt(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BetterAuthUser_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BetterAuthUser",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DBUser_id(ctx context.Context, field graphql.CollectedField, obj *models.DBUsers) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DBUser_id,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.DBUser().ID(ctx, obj)
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DBUser_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DBUser",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DBUser_isActive(ctx context.Context, field graphql.CollectedField, obj *models.DBUsers) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DBUser_isActive,
+		func(ctx context.Context) (any, error) {
+			return obj.IsActive, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DBUser_isActive(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DBUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DBUser_currentRide(ctx context.Context, field graphql.CollectedField, obj *models.DBUsers) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DBUser_currentRide,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentRide, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DBUser_currentRide(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DBUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DBUser_pushSubscription(ctx context.Context, field graphql.CollectedField, obj *models.DBUsers) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DBUser_pushSubscription,
+		func(ctx context.Context) (any, error) {
+			return obj.PushSubscription, nil
+		},
+		nil,
+		ec.marshalOPushSubscription2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐPushSubscription,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DBUser_pushSubscription(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DBUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "endpoint":
+				return ec.fieldContext_PushSubscription_endpoint(ctx, field)
+			case "keys":
+				return ec.fieldContext_PushSubscription_keys(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PushSubscription", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GeoLocation_lat(ctx context.Context, field graphql.CollectedField, obj *models.GeoLocation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1088,7 +2244,7 @@ func (ec *executionContext) _Mutation_createRide(ctx context.Context, field grap
 		ec.fieldContext_Mutation_createRide,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().CreateRide(ctx, fc.Args["maxRiders"].(int), fc.Args["visibility"].(string), fc.Args["startLat"].(float64), fc.Args["startLng"].(float64), fc.Args["destinationLat"].(float64), fc.Args["destinationLng"].(float64), fc.Args["startName"].(string), fc.Args["destinationName"].(string), fc.Args["tripName"].(string))
+			return ec.Resolvers.Mutation().CreateRide(ctx, fc.Args["maxRiders"].(int), fc.Args["visibility"].(string), fc.Args["startLat"].(float64), fc.Args["startLng"].(float64), fc.Args["destinationLat"].(float64), fc.Args["destinationLng"].(float64), fc.Args["startName"].(string), fc.Args["destinationName"].(string), fc.Args["tripName"].(string))
 		},
 		nil,
 		ec.marshalNRide2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐRide,
@@ -1159,7 +2315,7 @@ func (ec *executionContext) _Mutation_updateRide(ctx context.Context, field grap
 		ec.fieldContext_Mutation_updateRide,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().UpdateRide(ctx, fc.Args["rideCode"].(string), fc.Args["requestType"].(*string), fc.Args["maxRiders"].(*int), fc.Args["visibility"].(*string), fc.Args["endedAt"].(*string), fc.Args["startedAt"].(*string), fc.Args["status"].(*string), fc.Args["tripName"].(*string))
+			return ec.Resolvers.Mutation().UpdateRide(ctx, fc.Args["rideCode"].(string), fc.Args["requestType"].(*string), fc.Args["maxRiders"].(*int), fc.Args["visibility"].(*string), fc.Args["endedAt"].(*string), fc.Args["startedAt"].(*string), fc.Args["status"].(*string), fc.Args["tripName"].(*string))
 		},
 		nil,
 		ec.marshalNRide2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐRide,
@@ -1222,67 +2378,6 @@ func (ec *executionContext) fieldContext_Mutation_updateRide(ctx context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_updateUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_updateUser,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().UpdateUser(ctx, fc.Args["input"].(models.UpdateUserInput))
-		},
-		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUser,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_updateUser(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "name":
-				return ec.fieldContext_User_name(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_User_createdAt(ctx, field)
-			case "lastLoginAt":
-				return ec.fieldContext_User_lastLoginAt(ctx, field)
-			case "isActive":
-				return ec.fieldContext_User_isActive(ctx, field)
-			case "currentRide":
-				return ec.fieldContext_User_currentRide(ctx, field)
-			case "picture":
-				return ec.fieldContext_User_picture(ctx, field)
-			case "pushSubscription":
-				return ec.fieldContext_User_pushSubscription(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_updateUser_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_joinRide(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1291,7 +2386,7 @@ func (ec *executionContext) _Mutation_joinRide(ctx context.Context, field graphq
 		ec.fieldContext_Mutation_joinRide,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().JoinRide(ctx, fc.Args["rideCode"].(string), fc.Args["role"].(string))
+			return ec.Resolvers.Mutation().JoinRide(ctx, fc.Args["rideCode"].(string), fc.Args["role"].(string))
 		},
 		nil,
 		ec.marshalNRide2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐRide,
@@ -1362,7 +2457,7 @@ func (ec *executionContext) _Mutation_sendSignal(ctx context.Context, field grap
 		ec.fieldContext_Mutation_sendSignal,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().SendSignal(ctx, fc.Args["rideCode"].(string), fc.Args["signalType"].(string), fc.Args["lat"].(*float64), fc.Args["lng"].(*float64))
+			return ec.Resolvers.Mutation().SendSignal(ctx, fc.Args["rideCode"].(string), fc.Args["signalType"].(string), fc.Args["lat"].(*float64), fc.Args["lng"].(*float64))
 		},
 		nil,
 		ec.marshalNBoolean2bool,
@@ -1402,7 +2497,7 @@ func (ec *executionContext) _Participant_userId(ctx context.Context, field graph
 		field,
 		ec.fieldContext_Participant_userId,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Participant().UserID(ctx, obj)
+			return ec.Resolvers.Participant().UserID(ctx, obj)
 		},
 		nil,
 		ec.marshalNID2string,
@@ -1611,7 +2706,7 @@ func (ec *executionContext) _Query_me(ctx context.Context, field graphql.Collect
 		field,
 		ec.fieldContext_Query_me,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().Me(ctx)
+			return ec.Resolvers.Query().Me(ctx)
 		},
 		nil,
 		ec.marshalNUser2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUser,
@@ -1634,16 +2729,18 @@ func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graph
 				return ec.fieldContext_User_name(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "image":
+				return ec.fieldContext_User_image(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
-			case "lastLoginAt":
-				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
 			case "isActive":
 				return ec.fieldContext_User_isActive(ctx, field)
 			case "currentRide":
 				return ec.fieldContext_User_currentRide(ctx, field)
-			case "picture":
-				return ec.fieldContext_User_picture(ctx, field)
 			case "pushSubscription":
 				return ec.fieldContext_User_pushSubscription(ctx, field)
 			}
@@ -1661,7 +2758,7 @@ func (ec *executionContext) _Query_ride(ctx context.Context, field graphql.Colle
 		ec.fieldContext_Query_ride,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Ride(ctx, fc.Args["rideCode"].(string))
+			return ec.Resolvers.Query().Ride(ctx, fc.Args["rideCode"].(string))
 		},
 		nil,
 		ec.marshalNRide2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐRide,
@@ -1731,7 +2828,7 @@ func (ec *executionContext) _Query_myRides(ctx context.Context, field graphql.Co
 		field,
 		ec.fieldContext_Query_myRides,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().MyRides(ctx)
+			return ec.Resolvers.Query().MyRides(ctx)
 		},
 		nil,
 		ec.marshalNRide2ᚕᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐRideᚄ,
@@ -1791,7 +2888,7 @@ func (ec *executionContext) _Query_user(ctx context.Context, field graphql.Colle
 		ec.fieldContext_Query_user,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().User(ctx, fc.Args["userId"].(string))
+			return ec.Resolvers.Query().User(ctx, fc.Args["userId"].(string))
 		},
 		nil,
 		ec.marshalNUser2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUser,
@@ -1814,16 +2911,18 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_name(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "image":
+				return ec.fieldContext_User_image(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
-			case "lastLoginAt":
-				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
 			case "isActive":
 				return ec.fieldContext_User_isActive(ctx, field)
 			case "currentRide":
 				return ec.fieldContext_User_currentRide(ctx, field)
-			case "picture":
-				return ec.fieldContext_User_picture(ctx, field)
 			case "pushSubscription":
 				return ec.fieldContext_User_pushSubscription(ctx, field)
 			}
@@ -1852,7 +2951,7 @@ func (ec *executionContext) _Query_usersByIds(ctx context.Context, field graphql
 		ec.fieldContext_Query_usersByIds,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().UsersByIds(ctx, fc.Args["ids"].([]string))
+			return ec.Resolvers.Query().UsersByIds(ctx, fc.Args["ids"].([]string))
 		},
 		nil,
 		ec.marshalNUser2ᚕᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUserᚄ,
@@ -1875,16 +2974,18 @@ func (ec *executionContext) fieldContext_Query_usersByIds(ctx context.Context, f
 				return ec.fieldContext_User_name(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "image":
+				return ec.fieldContext_User_image(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
-			case "lastLoginAt":
-				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
 			case "isActive":
 				return ec.fieldContext_User_isActive(ctx, field)
 			case "currentRide":
 				return ec.fieldContext_User_currentRide(ctx, field)
-			case "picture":
-				return ec.fieldContext_User_picture(ctx, field)
 			case "pushSubscription":
 				return ec.fieldContext_User_pushSubscription(ctx, field)
 			}
@@ -1913,7 +3014,7 @@ func (ec *executionContext) _Query___type(ctx context.Context, field graphql.Col
 		ec.fieldContext_Query___type,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.introspectType(fc.Args["name"].(string))
+			return ec.IntrospectType(fc.Args["name"].(string))
 		},
 		nil,
 		ec.marshalO__Type2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐType,
@@ -1977,7 +3078,7 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 		field,
 		ec.fieldContext_Query___schema,
 		func(ctx context.Context) (any, error) {
-			return ec.introspectSchema()
+			return ec.IntrospectSchema()
 		},
 		nil,
 		ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema,
@@ -2020,7 +3121,7 @@ func (ec *executionContext) _Ride_id(ctx context.Context, field graphql.Collecte
 		field,
 		ec.fieldContext_Ride_id,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Ride().ID(ctx, obj)
+			return ec.Resolvers.Ride().ID(ctx, obj)
 		},
 		nil,
 		ec.marshalNID2string,
@@ -2136,7 +3237,7 @@ func (ec *executionContext) _Ride_createdBy(ctx context.Context, field graphql.C
 		field,
 		ec.fieldContext_Ride_createdBy,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Ride().CreatedBy(ctx, obj)
+			return ec.Resolvers.Ride().CreatedBy(ctx, obj)
 		},
 		nil,
 		ec.marshalNString2string,
@@ -2510,7 +3611,7 @@ func (ec *executionContext) _Signal_id(ctx context.Context, field graphql.Collec
 		field,
 		ec.fieldContext_Signal_id,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Signal().ID(ctx, obj)
+			return ec.Resolvers.Signal().ID(ctx, obj)
 		},
 		nil,
 		ec.marshalNID2string,
@@ -2568,7 +3669,7 @@ func (ec *executionContext) _Signal_fromUser(ctx context.Context, field graphql.
 		field,
 		ec.fieldContext_Signal_fromUser,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Signal().FromUser(ctx, obj)
+			return ec.Resolvers.Signal().FromUser(ctx, obj)
 		},
 		nil,
 		ec.marshalNID2string,
@@ -2690,7 +3791,7 @@ func (ec *executionContext) _User_id(ctx context.Context, field graphql.Collecte
 		field,
 		ec.fieldContext_User_id,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.User().ID(ctx, obj)
+			return ec.Resolvers.User().ID(ctx, obj)
 		},
 		nil,
 		ec.marshalNID2string,
@@ -2770,23 +3871,52 @@ func (ec *executionContext) fieldContext_User_email(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _User_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.User) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_emailVerified(ctx context.Context, field graphql.CollectedField, obj *models.User) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_User_createdAt,
+		ec.fieldContext_User_emailVerified,
 		func(ctx context.Context) (any, error) {
-			return obj.CreatedAt, nil
+			return obj.EmailVerified, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalNBoolean2bool,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_User_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_User_emailVerified(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_image(ctx context.Context, field graphql.CollectedField, obj *models.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_image,
+		func(ctx context.Context) (any, error) {
+			return obj.Image, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_image(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
@@ -2799,14 +3929,14 @@ func (ec *executionContext) fieldContext_User_createdAt(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _User_lastLoginAt(ctx context.Context, field graphql.CollectedField, obj *models.User) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.User) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_User_lastLoginAt,
+		ec.fieldContext_User_createdAt,
 		func(ctx context.Context) (any, error) {
-			return obj.LastLoginAt, nil
+			return ec.Resolvers.User().CreatedAt(ctx, obj)
 		},
 		nil,
 		ec.marshalNString2string,
@@ -2815,12 +3945,41 @@ func (ec *executionContext) _User_lastLoginAt(ctx context.Context, field graphql
 	)
 }
 
-func (ec *executionContext) fieldContext_User_lastLoginAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_User_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.User().UpdatedAt(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -2874,35 +4033,6 @@ func (ec *executionContext) _User_currentRide(ctx context.Context, field graphql
 }
 
 func (ec *executionContext) fieldContext_User_currentRide(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "User",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _User_picture(ctx context.Context, field graphql.CollectedField, obj *models.User) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_User_picture,
-		func(ctx context.Context) (any, error) {
-			return obj.Picture, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_User_picture(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
@@ -4398,6 +5528,10 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 func (ec *executionContext) unmarshalInputPushSubscriptionInput(ctx context.Context, obj any) (models.PushSubscriptionInput, error) {
 	var it models.PushSubscriptionInput
+	if obj == nil {
+		return it, nil
+	}
+
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -4433,12 +5567,15 @@ func (ec *executionContext) unmarshalInputPushSubscriptionInput(ctx context.Cont
 			it.ExpirationTime = data
 		}
 	}
-
 	return it, nil
 }
 
 func (ec *executionContext) unmarshalInputPushSubscriptionKeysInput(ctx context.Context, obj any) (models.PushSubscriptionKeysInput, error) {
 	var it models.PushSubscriptionKeysInput
+	if obj == nil {
+		return it, nil
+	}
+
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -4467,12 +5604,15 @@ func (ec *executionContext) unmarshalInputPushSubscriptionKeysInput(ctx context.
 			it.Auth = data
 		}
 	}
-
 	return it, nil
 }
 
 func (ec *executionContext) unmarshalInputUpdateUserInput(ctx context.Context, obj any) (models.UpdateUserInput, error) {
 	var it models.UpdateUserInput
+	if obj == nil {
+		return it, nil
+	}
+
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -4536,7 +5676,6 @@ func (ec *executionContext) unmarshalInputUpdateUserInput(ctx context.Context, o
 			it.ClearSubscription = data
 		}
 	}
-
 	return it, nil
 }
 
@@ -4547,6 +5686,605 @@ func (ec *executionContext) unmarshalInputUpdateUserInput(ctx context.Context, o
 // endregion ************************** interface.gotpl ***************************
 
 // region    **************************** object.gotpl ****************************
+
+var betterAuthAccountImplementors = []string{"BetterAuthAccount"}
+
+func (ec *executionContext) _BetterAuthAccount(ctx context.Context, sel ast.SelectionSet, obj *models.BetterAuthAccount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, betterAuthAccountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BetterAuthAccount")
+		case "id":
+			out.Values[i] = ec._BetterAuthAccount_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "accountId":
+			out.Values[i] = ec._BetterAuthAccount_accountId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "providerId":
+			out.Values[i] = ec._BetterAuthAccount_providerId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "userId":
+			out.Values[i] = ec._BetterAuthAccount_userId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "accessToken":
+			out.Values[i] = ec._BetterAuthAccount_accessToken(ctx, field, obj)
+		case "refreshToken":
+			out.Values[i] = ec._BetterAuthAccount_refreshToken(ctx, field, obj)
+		case "accessTokenExpiresAt":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BetterAuthAccount_accessTokenExpiresAt(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "refreshTokenExpiresAt":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BetterAuthAccount_refreshTokenExpiresAt(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "scope":
+			out.Values[i] = ec._BetterAuthAccount_scope(ctx, field, obj)
+		case "idToken":
+			out.Values[i] = ec._BetterAuthAccount_idToken(ctx, field, obj)
+		case "createdAt":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BetterAuthAccount_createdAt(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "updatedAt":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BetterAuthAccount_updatedAt(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var betterAuthSessionImplementors = []string{"BetterAuthSession"}
+
+func (ec *executionContext) _BetterAuthSession(ctx context.Context, sel ast.SelectionSet, obj *models.BetterAuthSession) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, betterAuthSessionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BetterAuthSession")
+		case "id":
+			out.Values[i] = ec._BetterAuthSession_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "userId":
+			out.Values[i] = ec._BetterAuthSession_userId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "token":
+			out.Values[i] = ec._BetterAuthSession_token(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "ipAddress":
+			out.Values[i] = ec._BetterAuthSession_ipAddress(ctx, field, obj)
+		case "userAgent":
+			out.Values[i] = ec._BetterAuthSession_userAgent(ctx, field, obj)
+		case "expiresAt":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BetterAuthSession_expiresAt(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "createdAt":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BetterAuthSession_createdAt(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "updatedAt":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BetterAuthSession_updatedAt(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var betterAuthUserImplementors = []string{"BetterAuthUser"}
+
+func (ec *executionContext) _BetterAuthUser(ctx context.Context, sel ast.SelectionSet, obj *models.BetterAuthUser) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, betterAuthUserImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BetterAuthUser")
+		case "id":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BetterAuthUser_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "name":
+			out.Values[i] = ec._BetterAuthUser_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "email":
+			out.Values[i] = ec._BetterAuthUser_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "emailVerified":
+			out.Values[i] = ec._BetterAuthUser_emailVerified(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "image":
+			out.Values[i] = ec._BetterAuthUser_image(ctx, field, obj)
+		case "createdAt":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BetterAuthUser_createdAt(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "updatedAt":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BetterAuthUser_updatedAt(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var dBUserImplementors = []string{"DBUser"}
+
+func (ec *executionContext) _DBUser(ctx context.Context, sel ast.SelectionSet, obj *models.DBUsers) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, dBUserImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DBUser")
+		case "id":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._DBUser_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "isActive":
+			out.Values[i] = ec._DBUser_isActive(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "currentRide":
+			out.Values[i] = ec._DBUser_currentRide(ctx, field, obj)
+		case "pushSubscription":
+			out.Values[i] = ec._DBUser_pushSubscription(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
 
 var geoLocationImplementors = []string{"GeoLocation"}
 
@@ -4578,10 +6316,10 @@ func (ec *executionContext) _GeoLocation(ctx context.Context, sel ast.SelectionS
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -4625,13 +6363,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "updateUser":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_updateUser(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "joinRide":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_joinRide(ctx, field)
@@ -4655,10 +6386,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -4735,10 +6466,10 @@ func (ec *executionContext) _Participant(ctx context.Context, sel ast.SelectionS
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -4779,10 +6510,10 @@ func (ec *executionContext) _PushSubscription(ctx context.Context, sel ast.Selec
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -4823,10 +6554,10 @@ func (ec *executionContext) _PushSubscriptionKeys(ctx context.Context, sel ast.S
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -4983,10 +6714,10 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5143,10 +6874,10 @@ func (ec *executionContext) _Ride(ctx context.Context, sel ast.SelectionSet, obj
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5187,10 +6918,10 @@ func (ec *executionContext) _RideSettings(ctx context.Context, sel ast.Selection
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5310,10 +7041,10 @@ func (ec *executionContext) _Signal(ctx context.Context, sel ast.SelectionSet, o
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5381,16 +7112,85 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "emailVerified":
+			out.Values[i] = ec._User_emailVerified(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "image":
+			out.Values[i] = ec._User_image(ctx, field, obj)
 		case "createdAt":
-			out.Values[i] = ec._User_createdAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._User_createdAt(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
-		case "lastLoginAt":
-			out.Values[i] = ec._User_lastLoginAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
 			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "updatedAt":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._User_updatedAt(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "isActive":
 			out.Values[i] = ec._User_isActive(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -5398,8 +7198,6 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "currentRide":
 			out.Values[i] = ec._User_currentRide(ctx, field, obj)
-		case "picture":
-			out.Values[i] = ec._User_picture(ctx, field, obj)
 		case "pushSubscription":
 			out.Values[i] = ec._User_pushSubscription(ctx, field, obj)
 		default:
@@ -5411,10 +7209,10 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5467,10 +7265,10 @@ func (ec *executionContext) ___Directive(ctx context.Context, sel ast.SelectionS
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5515,10 +7313,10 @@ func (ec *executionContext) ___EnumValue(ctx context.Context, sel ast.SelectionS
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5573,10 +7371,10 @@ func (ec *executionContext) ___Field(ctx context.Context, sel ast.SelectionSet, 
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5628,10 +7426,10 @@ func (ec *executionContext) ___InputValue(ctx context.Context, sel ast.Selection
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5683,10 +7481,10 @@ func (ec *executionContext) ___Schema(ctx context.Context, sel ast.SelectionSet,
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5742,10 +7540,10 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 		return graphql.Null
 	}
 
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
 
 	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
 			Label:    label,
 			Path:     graphql.GetPath(ctx),
 			FieldSet: dfs,
@@ -5770,7 +7568,7 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	res := graphql.MarshalBoolean(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 	}
 	return res
@@ -5786,7 +7584,7 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	res := graphql.MarshalFloatContext(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 	}
 	return graphql.WrapContextMarshaler(ctx, res)
@@ -5806,7 +7604,7 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 	res := graphql.MarshalID(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 	}
 	return res
@@ -5852,7 +7650,7 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 	res := graphql.MarshalInt(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 	}
 	return res
@@ -5863,39 +7661,11 @@ func (ec *executionContext) marshalNParticipant2githubᚗcomᚋironnickoᚋtande
 }
 
 func (ec *executionContext) marshalNParticipant2ᚕgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐParticipantᚄ(ctx context.Context, sel ast.SelectionSet, v []models.Participant) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNParticipant2githubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐParticipant(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNParticipant2githubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐParticipant(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -5920,39 +7690,11 @@ func (ec *executionContext) marshalNRide2githubᚗcomᚋironnickoᚋtandemᚑsyn
 }
 
 func (ec *executionContext) marshalNRide2ᚕᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐRideᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.Ride) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNRide2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐRide(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNRide2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐRide(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -5966,7 +7708,7 @@ func (ec *executionContext) marshalNRide2ᚕᚖgithubᚗcomᚋironnickoᚋtandem
 func (ec *executionContext) marshalNRide2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐRide(ctx context.Context, sel ast.SelectionSet, v *models.Ride) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
@@ -5987,15 +7729,10 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	res := graphql.MarshalString(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 	}
 	return res
-}
-
-func (ec *executionContext) unmarshalNUpdateUserInput2githubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUpdateUserInput(ctx context.Context, v any) (models.UpdateUserInput, error) {
-	res, err := ec.unmarshalInputUpdateUserInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNUser2githubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUser(ctx context.Context, sel ast.SelectionSet, v models.User) graphql.Marshaler {
@@ -6003,39 +7740,11 @@ func (ec *executionContext) marshalNUser2githubᚗcomᚋironnickoᚋtandemᚑsyn
 }
 
 func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUserᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.User) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNUser2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUser(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNUser2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUser(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -6049,7 +7758,7 @@ func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋironnickoᚋtandem
 func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUser(ctx context.Context, sel ast.SelectionSet, v *models.User) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
@@ -6061,39 +7770,11 @@ func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlge
 }
 
 func (ec *executionContext) marshalN__Directive2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirectiveᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.Directive) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -6114,7 +7795,7 @@ func (ec *executionContext) marshalN__DirectiveLocation2string(ctx context.Conte
 	res := graphql.MarshalString(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 	}
 	return res
@@ -6136,39 +7817,11 @@ func (ec *executionContext) unmarshalN__DirectiveLocation2ᚕstringᚄ(ctx conte
 }
 
 func (ec *executionContext) marshalN__DirectiveLocation2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__DirectiveLocation2string(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__DirectiveLocation2string(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -6192,39 +7845,11 @@ func (ec *executionContext) marshalN__InputValue2githubᚗcomᚋ99designsᚋgqlg
 }
 
 func (ec *executionContext) marshalN__InputValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐInputValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.InputValue) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__InputValue2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐInputValue(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__InputValue2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐInputValue(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -6240,39 +7865,11 @@ func (ec *executionContext) marshalN__Type2githubᚗcomᚋ99designsᚋgqlgenᚋg
 }
 
 func (ec *executionContext) marshalN__Type2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐTypeᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.Type) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__Type2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐType(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__Type2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐType(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -6286,7 +7883,7 @@ func (ec *executionContext) marshalN__Type2ᚕgithubᚗcomᚋ99designsᚋgqlgen�
 func (ec *executionContext) marshalN__Type2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐType(ctx context.Context, sel ast.SelectionSet, v *introspection.Type) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
@@ -6303,7 +7900,7 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	res := graphql.MarshalString(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 	}
 	return res
@@ -6396,6 +7993,18 @@ func (ec *executionContext) unmarshalOPushSubscriptionInput2ᚖgithubᚗcomᚋir
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalOString2string(ctx context.Context, v any) (string, error) {
+	res, err := graphql.UnmarshalString(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(v)
+	return res
+}
+
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {
 	if v == nil {
 		return nil, nil
@@ -6418,39 +8027,11 @@ func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgq
 	if v == nil {
 		return graphql.Null
 	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__EnumValue2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValue(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__EnumValue2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValue(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -6465,39 +8046,11 @@ func (ec *executionContext) marshalO__Field2ᚕgithubᚗcomᚋ99designsᚋgqlgen
 	if v == nil {
 		return graphql.Null
 	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__Field2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐField(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__Field2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐField(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -6512,39 +8065,11 @@ func (ec *executionContext) marshalO__InputValue2ᚕgithubᚗcomᚋ99designsᚋg
 	if v == nil {
 		return graphql.Null
 	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__InputValue2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐInputValue(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__InputValue2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐInputValue(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
@@ -6566,39 +8091,11 @@ func (ec *executionContext) marshalO__Type2ᚕgithubᚗcomᚋ99designsᚋgqlgen�
 	if v == nil {
 		return graphql.Null
 	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalN__Type2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐType(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalN__Type2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐType(ctx, sel, v[i])
+	})
 
 	for _, e := range ret {
 		if e == graphql.Null {
