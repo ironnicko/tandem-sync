@@ -200,12 +200,12 @@ func (r *mutationResolver) UpdateRide(ctx context.Context, rideCode string, requ
 			}
 
 		case "end":
-			_, err = usersColl.UpdateOne(ctx,
-				bson.M{"_id": userID},
+			_, err = usersColl.UpdateMany(ctx,
+				bson.M{"currentRide": rideCode},
 				bson.M{"$set": bson.M{"currentRide": ""}},
 			)
 			if err != nil {
-				return nil, fmt.Errorf("failed to update user: %w", err)
+				return nil, fmt.Errorf("failed to update users: %w", err)
 			}
 
 			users, err := getUsersFromRideParticipants(ctx, ride, usersColl)

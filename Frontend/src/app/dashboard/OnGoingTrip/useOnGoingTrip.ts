@@ -1,9 +1,9 @@
 import { RIDE } from "@/lib/graphql/query";
-import { UPDATE_RIDE } from "@/lib/graphql/mutation";
 import { DashboardState, RideState } from "@/stores/types";
 import { useAuth } from "@/stores/useAuth";
 import { useSocket } from "@/stores/useSocket";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useOtherUsers } from "@/stores/useOtherUsers";
+import { useQuery } from "@apollo/client/react";
 import useAnnouncer from "@/hooks/useAnnouncer";
 import { useCallback, useEffect } from "react";
 
@@ -23,7 +23,6 @@ export function useOnGoingTrip(
     onAnnounce,
     onRideEnded,
   } = useSocket();
-  const [updateRide] = useMutation<{ updateRide: RideState }>(UPDATE_RIDE);
   const { data, loading, error } = useQuery<{ ride: RideState }>(RIDE, {
     variables: { rideCode: user.currentRide },
     fetchPolicy: "cache-and-network",
@@ -39,11 +38,12 @@ export function useOnGoingTrip(
   useEffect(() => {
     if (!data?.ride?.rideCode) return;
     const rideCode = data.ride.rideCode;
-    onRideEnded(async () => {
-      setUser({ ...user!, currentRide: null });
-      await updateRide({ variables: { rideCode, requestType: "remove" } });
+    onRideEnded(() => {
       leaveRide({ rideCode });
       disconnect();
+      setUser({ ...user!, currentRide: null });
+      useOtherUsers.getState().clearUsersLocations();
+      updateDashboard({ fromLocation: null, toLocation: null });
     });
     return () => {
       onRideEnded(null);
