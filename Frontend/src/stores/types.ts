@@ -1,7 +1,5 @@
 // import { Preferences } from "@capacitor/preferences";
 
-import { Socket } from "socket.io-client";
-
 // Utility to detect if we are in Capacitor
 // const isCapacitor = typeof window !== "undefined" && window?.Capacitor;
 
@@ -86,7 +84,6 @@ export interface UserState {
   isActive?: boolean | null;
   currentRide?: string | null;
   image?: string | null;
-  picture?: string | null;
   location?: GeoLocation | null;
   pushSubscription?: PushSubscription | null;
 }

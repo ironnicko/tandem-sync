@@ -75,7 +75,6 @@ export const useAuth = create<AuthStore>()(
 
           const user = {
             ...data.user,
-            picture: data.user.image,
           };
 
           set({
