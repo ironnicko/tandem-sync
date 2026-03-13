@@ -116,3 +116,13 @@ func handleSendSignal(conn *websocket.Conn, userID string, payload types.Payload
 		},
 	})
 }
+
+func handleEndRide(conn *websocket.Conn, userID string, payload types.Payload) {
+	rideCode := payload.RideCode
+	log.Printf("%s ending ride %s", userID, rideCode)
+
+	utils.BroadcastToRoom(conn, rideCode, map[string]any{
+		"eventType": "rideEnded",
+		"data":      map[string]any{"rideCode": rideCode, "userId": userID},
+	})
+}

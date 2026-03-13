@@ -68,6 +68,11 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		case "sendSignal":
 			payload := msg.Data
 			handleSendSignal(conn, userID, payload)
+
+		case "endRide":
+			payload := msg.Data
+			handleEndRide(conn, userID, payload)
 		}
+
 	}
 }
