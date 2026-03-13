@@ -11,10 +11,14 @@ import (
 
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Read BetterAuth session cookie
-	cookie, err := r.Cookie("better-auth.session_data")
+	cookie, err := r.Cookie("better-auth.session_token")
 	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
+		// fallback to session cookie
+		cookie, err = r.Cookie("better-auth.session")
+		if err != nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	token := cookie.Value
@@ -33,7 +37,9 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
+	config.ActiveUsersMu.Lock()
 	config.ActiveUsers[conn] = userID
+	config.ActiveUsersMu.Unlock()
 	log.Printf("✅ User connected: %s", userID)
 
 	for {

@@ -22,7 +22,6 @@ export function middleware(req: NextRequest) {
   const session =
     req.cookies.get("better-auth.session_token")?.value ||
     req.cookies.get("better-auth.session")?.value;
-  console.log(session);
 
   if (!session) {
     const loginUrl = new URL("/signin", req.url);

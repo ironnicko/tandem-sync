@@ -12,7 +12,7 @@ services:
             - --entrypoints.web.address=:80
             - --entrypoints.websecure.address=:443
             - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
-            - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}
+            - --certificatesresolvers.letsencrypt.acme.email=${MY_EMAIL}
             - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
             - --entrypoints.web.http.redirections.entrypoint.to=websecure
             - --entrypoints.web.http.redirections.entrypoint.scheme=https
@@ -53,7 +53,24 @@ services:
             - traefik.http.services.backend.loadbalancer.server.port=8000
         env_file:
             - ./.env
-    
+
+    authserver:
+        image: ironnicko1413/tandem-sync-authserver:latest
+        build:
+            context: ./AuthServer
+            dockerfile: Dockerfile
+        restart: always
+        ports:
+            - "8001"
+        labels:
+            - traefik.enable=true
+            - traefik.http.routers.authserver.rule=Host(`${TRAEFIK_HOST}`) && PathPrefix(`/api/auth`)
+            - traefik.http.routers.authserver.entrypoints=websecure
+            - traefik.http.routers.authserver.tls.certresolver=letsencrypt
+            - traefik.http.services.authserver.loadbalancer.server.port=8001
+        env_file:
+            - ./.env
+
     socket:
         image: ironnicko1413/tandem-sync-socket:latest
         build:

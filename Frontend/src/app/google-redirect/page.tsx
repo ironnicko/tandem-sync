@@ -4,9 +4,6 @@ import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/stores/useAuth";
 import { authClient } from "@/lib/auth";
-import { gqlClient } from "@/lib/graphql/client";
-import { ME } from "@/lib/graphql/query";
-import { UserState } from "@/stores/types";
 import { Loader } from "lucide-react";
 
 export default function GoogleRedirectHandler() {

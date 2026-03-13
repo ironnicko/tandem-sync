@@ -49,11 +49,15 @@ func ValidateToken(c *gin.Context, tokenString string) error {
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader, err := c.Cookie("better-auth.session_data")
+		authHeader, err := c.Cookie("better-auth.session_token")
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing"})
-			c.Abort()
-			return
+			// fallback to session cookie
+			authHeader, err = c.Cookie("better-auth.session")
+			if err != nil {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing"})
+				c.Abort()
+				return
+			}
 		}
 
 		err = ValidateToken(c, authHeader)
