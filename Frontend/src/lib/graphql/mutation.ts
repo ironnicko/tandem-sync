@@ -130,7 +130,7 @@ export const JOIN_RIDE = gql`
 
 export const SET_USER_PUSH_NOTIFICATION = gql`
   mutation SetUserPushNotification($input: UpdateUserInput!) {
-    updateUser(input: $input) {
+    setUserPushNotification(input: $input) {
       pushSubscription {
         endpoint
         keys {
