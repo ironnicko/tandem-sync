@@ -56,13 +56,13 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const { setUser } = useAuth.getState();
+    const {user, setUser } = useAuth.getState();
     const getData = async () => {
       const { data: gqlData } = await gqlClient.query<{ me: UserState }>({
         query: ME,
         fetchPolicy: "network-only",
       });
-      setUser(gqlData.me);
+      setUser({...user, ...gqlData.me});
     };
     getData();
   }, []);

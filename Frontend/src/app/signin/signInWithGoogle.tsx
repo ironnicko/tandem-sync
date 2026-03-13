@@ -14,7 +14,7 @@ export default function GoogleSignInButton() {
   const handleGoogleLogin = async () => {
     try {
       setBusyButton(true);
-      await loginWithGoogle(`/google-redirect?redirect=${redirectUrl}`);
+      await loginWithGoogle(`/google-redirect`);
     } finally {
       setBusyButton(false);
     }

@@ -23,8 +23,7 @@ var Envs *Config
 
 func LoadConfig() {
 	Envs = &Config{
-		MongoURI:           getEnv("MONGO_URI", "mongodb://localhost:27017"),
-		KafkaBrokers:       getEnv("KAFKA_BROKERS", "localhost:9092"),
+		MongoURI:           getEnv("MONGODB_URI", "mongodb://localhost:27017"),
 		JWTSecret:          getEnv("JWT_SECRET", "supersecret"),
 		GoogleClientID:     getEnv("NEXT_PUBLIC_GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),

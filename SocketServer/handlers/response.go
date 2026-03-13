@@ -11,10 +11,10 @@ import (
 
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Read BetterAuth session cookie
-	cookie, err := r.Cookie("better-auth.session_token")
+	cookie, err := r.Cookie("better-auth.session_data")
 	if err != nil {
 		// fallback to session cookie
-		cookie, err = r.Cookie("better-auth.session")
+		cookie, err = r.Cookie("__Secure-better-auth.session_data")
 		if err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return

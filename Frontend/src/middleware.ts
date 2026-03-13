@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_ROUTES = ["/signin", "/signup"];
+const PUBLIC_ROUTES = ["/", "/signin", "/signup"];
 
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
   // allow public routes
-  if (pathname === "/"|| PUBLIC_ROUTES.includes(pathname)) {
+  if (PUBLIC_ROUTES.includes(pathname)) {
     return NextResponse.next();
   }
 
@@ -19,9 +19,11 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const session =
-    req.cookies.get("better-auth.session_token")?.value ||
-    req.cookies.get("better-auth.session")?.value;
+    const session =
+        req.cookies.get("better-auth.session_token")?.value ||
+        req.cookies.get("__Secure-better-auth.session_data")?.value ||
+        req.cookies.get("__Secure-better-auth.session_token")?.value ||
+        req.cookies.get("better-auth.session_data")?.value;
 
   if (!session) {
     const loginUrl = new URL("/signin", req.url);

@@ -1,4 +1,4 @@
-const TARGET_URL = "http://localhost:3000"; // your app URL
+const TARGET_URL = "https://nikhilivannan.live"; // your app URL
 
 self.addEventListener("push", async function (event) {
   if (!event.data) return;
