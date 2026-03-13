@@ -21,12 +21,12 @@ func handleJoinRide(conn *websocket.Conn, userID string, payload types.Payload) 
 		return
 	}
 
-	config.RoomsMu.RLock()
+	config.RoomsMu.Lock()
 	if config.RideRooms[rideCode] == nil {
 		config.RideRooms[rideCode] = make(map[*websocket.Conn]string)
 	}
 	config.RideRooms[rideCode][conn] = userID
-	config.RoomsMu.RUnlock()
+	config.RoomsMu.Unlock()
 
 	allLocations, _ := config.RedisClient.HGetAll(config.CTX, fmt.Sprintf("ride:%s:locations", rideCode)).Result()
 	conn.WriteJSON(map[string]any{

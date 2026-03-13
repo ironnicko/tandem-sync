@@ -66,8 +66,10 @@ func BroadcastToRoom(skipConn *websocket.Conn, rideCode string, msg any) {
 }
 
 func CleanupConnection(conn *websocket.Conn) {
+	config.ActiveUsersMu.Lock()
 	userID := config.ActiveUsers[conn]
 	delete(config.ActiveUsers, conn)
+	config.ActiveUsersMu.Unlock()
 
 	var ridesToNotify []string
 

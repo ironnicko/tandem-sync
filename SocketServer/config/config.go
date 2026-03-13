@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 
@@ -14,12 +15,13 @@ import (
 
 var (
 	CTX         context.Context
-	Upgrader    = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+	Upgrader    websocket.Upgrader
 	RedisClient *redis.Client
 
 	RideRooms   = make(map[string]map[*websocket.Conn]string)
 	RoomsMu     sync.RWMutex
 	ActiveUsers = make(map[*websocket.Conn]string)
+	ActiveUsersMu sync.RWMutex
 	Envs        *Config
 )
 
@@ -31,6 +33,7 @@ type Config struct {
 	REDISPASSWORD string
 	MODE          string
 	SOCKETPORT    string
+	FRONTENDURL   string
 }
 
 func LoadConfig() {
@@ -42,6 +45,7 @@ func LoadConfig() {
 		REDISPASSWORD: getEnv("REDIS_PASSWORD", ""),
 		MODE:          getEnv("MODE", "local"),
 		SOCKETPORT:    getEnv("SOCKET_PORT", "3001"),
+		FRONTENDURL:   getEnv("FRONTEND_URL", "http://localhost:3000"),
 	}
 }
 
@@ -53,6 +57,23 @@ func LoadGlobals() {
 		Password: Envs.REDISPASSWORD,
 	})
 
+	Upgrader = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+			if origin == "" {
+				return true // allow requests without Origin header (same-origin)
+			}
+			u, err := url.Parse(origin)
+			if err != nil {
+				return false
+			}
+			frontendURL, err := url.Parse(Envs.FRONTENDURL)
+			if err != nil {
+				return false
+			}
+			return u.Host == frontendURL.Host
+		},
+	}
 }
 
 func getEnv(key, fallback string) string {

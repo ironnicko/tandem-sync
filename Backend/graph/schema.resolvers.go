@@ -22,27 +22,27 @@ import (
 
 // AccessTokenExpiresAt is the resolver for the accessTokenExpiresAt field.
 func (r *betterAuthAccountResolver) AccessTokenExpiresAt(ctx context.Context, obj *models.BetterAuthAccount) (*string, error) {
-	panic(fmt.Errorf("not implemented: AccessTokenExpiresAt - accessTokenExpiresAt"))
+	return nil, nil
 }
 
 // RefreshTokenExpiresAt is the resolver for the refreshTokenExpiresAt field.
 func (r *betterAuthAccountResolver) RefreshTokenExpiresAt(ctx context.Context, obj *models.BetterAuthAccount) (*string, error) {
-	panic(fmt.Errorf("not implemented: RefreshTokenExpiresAt - refreshTokenExpiresAt"))
+	return nil, nil
 }
 
 // CreatedAt is the resolver for the createdAt field.
 func (r *betterAuthAccountResolver) CreatedAt(ctx context.Context, obj *models.BetterAuthAccount) (string, error) {
-	panic(fmt.Errorf("not implemented: CreatedAt - createdAt"))
+	return "", nil
 }
 
 // UpdatedAt is the resolver for the updatedAt field.
 func (r *betterAuthAccountResolver) UpdatedAt(ctx context.Context, obj *models.BetterAuthAccount) (string, error) {
-	panic(fmt.Errorf("not implemented: UpdatedAt - updatedAt"))
+	return "", nil
 }
 
 // ExpiresAt is the resolver for the expiresAt field.
 func (r *betterAuthSessionResolver) ExpiresAt(ctx context.Context, obj *models.BetterAuthSession) (string, error) {
-	panic(fmt.Errorf("not implemented: ExpiresAt - expiresAt"))
+	return "", nil
 }
 
 // CreatedAt is the resolver for the createdAt field.
