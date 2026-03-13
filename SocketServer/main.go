@@ -19,7 +19,7 @@ func main() {
 		cfg = config.Envs
 	}
 	config.LoadGlobals()
-	http.HandleFunc("/ws", handlers.HandleWebSocket)
+	http.HandleFunc("/wss", handlers.HandleWebSocket)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok"}`))
