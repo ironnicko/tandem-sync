@@ -133,6 +133,9 @@ export const useAuth = create<AuthStore>()(
           console.error(err);
         }
 
+        const { useSocket } = await import("./useSocket");
+        useSocket.getState().disconnect();
+
         set({
           accessToken: null,
           refreshToken: null,
