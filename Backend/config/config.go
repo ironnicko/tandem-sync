@@ -8,9 +8,6 @@ type Config struct {
 	MongoURI           string
 	KafkaBrokers       string
 	JWTSecret          string
-	GoogleClientID     string
-	GoogleClientSecret string
-	GoogleRedirectURL  string
 	Mode               string
 	ServerPort         string
 	FrontendURL        string
@@ -25,9 +22,6 @@ func LoadConfig() {
 	Envs = &Config{
 		MongoURI:           getEnv("MONGODB_URI", "mongodb://localhost:27017"),
 		JWTSecret:          getEnv("JWT_SECRET", "supersecret"),
-		GoogleClientID:     getEnv("NEXT_PUBLIC_GOOGLE_CLIENT_ID", ""),
-		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
-		GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", ""),
 		ServerPort:         getEnv("SERVER_PORT", "8000"),
 		FrontendURL:        getEnv("FRONTEND_URL", ""),
 		Mode:               getEnv("MODE", "local"),
