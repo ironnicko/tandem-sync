@@ -92,10 +92,11 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateRide func(childComplexity int, maxRiders int, visibility string, startLat float64, startLng float64, destinationLat float64, destinationLng float64, startName string, destinationName string, tripName string) int
-		JoinRide   func(childComplexity int, rideCode string, role string) int
-		SendSignal func(childComplexity int, rideCode string, signalType string, lat *float64, lng *float64) int
-		UpdateRide func(childComplexity int, rideCode string, requestType *string, maxRiders *int, visibility *string, endedAt *string, startedAt *string, status *string, tripName *string) int
+		CreateRide              func(childComplexity int, maxRiders int, visibility string, startLat float64, startLng float64, destinationLat float64, destinationLng float64, startName string, destinationName string, tripName string) int
+		JoinRide                func(childComplexity int, rideCode string, role string) int
+		SendSignal              func(childComplexity int, rideCode string, signalType string, lat *float64, lng *float64) int
+		SetUserPushNotification func(childComplexity int, input models.UpdateUserInput) int
+		UpdateRide              func(childComplexity int, rideCode string, requestType *string, maxRiders *int, visibility *string, endedAt *string, startedAt *string, status *string, tripName *string) int
 	}
 
 	Participant struct {
@@ -191,6 +192,7 @@ type DBUserResolver interface {
 type MutationResolver interface {
 	CreateRide(ctx context.Context, maxRiders int, visibility string, startLat float64, startLng float64, destinationLat float64, destinationLng float64, startName string, destinationName string, tripName string) (*models.Ride, error)
 	UpdateRide(ctx context.Context, rideCode string, requestType *string, maxRiders *int, visibility *string, endedAt *string, startedAt *string, status *string, tripName *string) (*models.Ride, error)
+	SetUserPushNotification(ctx context.Context, input models.UpdateUserInput) (*models.DBUsers, error)
 	JoinRide(ctx context.Context, rideCode string, role string) (*models.Ride, error)
 	SendSignal(ctx context.Context, rideCode string, signalType string, lat *float64, lng *float64) (bool, error)
 }
@@ -471,6 +473,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SendSignal(childComplexity, args["rideCode"].(string), args["signalType"].(string), args["lat"].(*float64), args["lng"].(*float64)), true
+	case "Mutation.setUserPushNotification":
+		if e.ComplexityRoot.Mutation.SetUserPushNotification == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setUserPushNotification_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetUserPushNotification(childComplexity, args["input"].(models.UpdateUserInput)), true
 	case "Mutation.updateRide":
 		if e.ComplexityRoot.Mutation.UpdateRide == nil {
 			break
@@ -878,11 +891,6 @@ input PushSubscriptionInput {
 }
 
 input UpdateUserInput {
-  name: String
-  email: String
-  isActive: Boolean
-  currentRide: String
-  picture: String
   pushSubscription: PushSubscriptionInput
   clearSubscription: Boolean
 }
@@ -1021,6 +1029,8 @@ type Mutation {
     tripName: String
   ): Ride!
 
+  setUserPushNotification(input: UpdateUserInput!): DBUser!
+
   joinRide(rideCode: String!, role: String!): Ride!
 
   sendSignal(
@@ -1128,6 +1138,17 @@ func (ec *executionContext) field_Mutation_sendSignal_args(ctx context.Context, 
 		return nil, err
 	}
 	args["lng"] = arg3
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setUserPushNotification_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateUserInput2githubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUpdateUserInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -2372,6 +2393,57 @@ func (ec *executionContext) fieldContext_Mutation_updateRide(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateRide_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setUserPushNotification(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_setUserPushNotification,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetUserPushNotification(ctx, fc.Args["input"].(models.UpdateUserInput))
+		},
+		nil,
+		ec.marshalNDBUser2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐDBUsers,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setUserPushNotification(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_DBUser_id(ctx, field)
+			case "isActive":
+				return ec.fieldContext_DBUser_isActive(ctx, field)
+			case "currentRide":
+				return ec.fieldContext_DBUser_currentRide(ctx, field)
+			case "pushSubscription":
+				return ec.fieldContext_DBUser_pushSubscription(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DBUser", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setUserPushNotification_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -5618,48 +5690,13 @@ func (ec *executionContext) unmarshalInputUpdateUserInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "email", "isActive", "currentRide", "picture", "pushSubscription", "clearSubscription"}
+	fieldsInOrder := [...]string{"pushSubscription", "clearSubscription"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "name":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Name = data
-		case "email":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Email = data
-		case "isActive":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isActive"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.IsActive = data
-		case "currentRide":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currentRide"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CurrentRide = data
-		case "picture":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("picture"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Picture = data
 		case "pushSubscription":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pushSubscription"))
 			data, err := ec.unmarshalOPushSubscriptionInput2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐPushSubscriptionInput(ctx, v)
@@ -6359,6 +6396,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateRide":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateRide(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setUserPushNotification":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setUserPushNotification(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -7574,6 +7618,20 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) marshalNDBUser2githubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐDBUsers(ctx context.Context, sel ast.SelectionSet, v models.DBUsers) graphql.Marshaler {
+	return ec._DBUser(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDBUser2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐDBUsers(ctx context.Context, sel ast.SelectionSet, v *models.DBUsers) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DBUser(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -7733,6 +7791,11 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNUpdateUserInput2githubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUpdateUserInput(ctx context.Context, v any) (models.UpdateUserInput, error) {
+	res, err := ec.unmarshalInputUpdateUserInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNUser2githubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUser(ctx context.Context, sel ast.SelectionSet, v models.User) graphql.Marshaler {

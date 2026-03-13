@@ -128,15 +128,9 @@ export const JOIN_RIDE = gql`
   }
 `;
 
-export const UPDATE_USER = gql`
-  mutation UpdateUser($input: UpdateUserInput!) {
-    updateUser(input: $input) {
-      id
-      name
-      email
-      isActive
-      currentRide
-      picture
+export const SET_USER_PUSH_NOTIFICATION = gql`
+  mutation SetUserPushNotification($input: UpdateUserInput!) {
+    setUserPushNotification(input: $input) {
       pushSubscription {
         endpoint
         keys {
@@ -146,5 +140,4 @@ export const UPDATE_USER = gql`
       }
     }
   }
-
-  `
+`;
