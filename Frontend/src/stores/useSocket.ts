@@ -26,7 +26,8 @@ export const useSocket = create<SocketState>((set, get) => {
         break;
       case "userJoined":
         otherUsers.fetchUsersByIds([msg.data.userId]).then(() => {
-          announceCb?.(`${userName} joined the ride`, "join");
+          const joinedName = useOtherUsers.getState().getUserById(msg.data.userId)?.name || "Someone";
+          announceCb?.(`${joinedName} joined the ride`, "join");
         });
         break;
       case "userLeft":
