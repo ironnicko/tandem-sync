@@ -102,9 +102,11 @@ export interface SocketState {
     location: GeoLocation;
   }) => void;
   leaveRide: (payload: { rideCode: string }) => void;
+  endRide: (payload: { rideCode: string }) => void;
   onAnnounce: (
     cb: (name: string, info: "join" | "info" | "success") => void,
   ) => void;
+  onRideEnded: (cb: (() => void) | null) => void;
 }
 
 export const storage = {

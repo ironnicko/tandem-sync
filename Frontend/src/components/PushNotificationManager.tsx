@@ -56,8 +56,8 @@ export default function PushNotificationManager() {
   async function unsubscribeFromPush() {
     const registration = await navigator.serviceWorker.ready;
     const sub = await registration.pushManager.getSubscription();
-    await Promise.allSettled([sub?.unsubscribe(), unsubscribeUser()])
 
+    await Promise.allSettled([sub?.unsubscribe(), unsubscribeUser()]);
   }
 
   async function sendTestNotification() {

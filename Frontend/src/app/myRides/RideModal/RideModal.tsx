@@ -30,7 +30,8 @@ interface RideModalProps {
 
 export default function RideModal({ ride, onClose }: RideModalProps) {
   const { user, setUser } = useAuth();
-  const { joinRide, leaveRide, connect, disconnect } = useSocket.getState();
+  const { joinRide, endRide, leaveRide, connect, disconnect } =
+    useSocket.getState();
   const { replaceRide } = useRides();
   const [currentRide, setCurrentRide] = useState(ride);
   const [formState, setFormState] = useState<Partial<UpdateRideParams>>({
@@ -53,6 +54,13 @@ export default function RideModal({ ride, onClose }: RideModalProps) {
     setButtonBusy(true);
     connect();
     try {
+      if (newStatus === "ended") {
+        endRide({ rideCode: ride.rideCode });
+        setUser({ ...user!, currentRide: null });
+        toast.success("Ride ended!");
+        // Send Out Notifications
+      }
+
       const now = new Date().toISOString();
       const updates: Partial<UpdateRideParams> = {
         ...formState,
@@ -74,11 +82,6 @@ export default function RideModal({ ride, onClose }: RideModalProps) {
         joinRide({ rideCode: ride.rideCode });
         router.push("/dashboard");
         toast.success("Ride started!");
-        // Send Out Notifications
-      } else if (newStatus === "ended") {
-        setUser({ ...user!, currentRide: null });
-        leaveRide({ rideCode: ride.rideCode });
-        toast.success("Ride ended!");
         // Send Out Notifications
       } else {
         toast.success("Ride updated!");
