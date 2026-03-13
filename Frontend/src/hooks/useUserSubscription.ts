@@ -1,10 +1,10 @@
 import { useMutation } from "@apollo/client/react";
-import { UPDATE_USER } from "@/lib/graphql/mutation";
+import { SET_USER_PUSH_NOTIFICATION } from "@/lib/graphql/mutation";
 import { UserState } from "@/stores/types";
 import { useAuth } from "@/stores/useAuth";
 
 export function useUserSubscription() {
-  const [updateUser] = useMutation<{ updateUser: UserState }>(UPDATE_USER);
+  const [updateUser] = useMutation<{ updateUser: UserState }>(SET_USER_PUSH_NOTIFICATION);
   const { user, setUser } = useAuth();
 
   async function subscribeUser(sub: PushSubscription) {

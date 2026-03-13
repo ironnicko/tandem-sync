@@ -20,11 +20,6 @@ input PushSubscriptionInput {
 }
 
 input UpdateUserInput {
-  name: String
-  email: String
-  isActive: Boolean
-  currentRide: String
-  picture: String
   pushSubscription: PushSubscriptionInput
   clearSubscription: Boolean
 }
@@ -162,6 +157,8 @@ type Mutation {
     status: String
     tripName: String
   ): Ride!
+
+  setUserPushNotification(input: UpdateUserInput!): DBUser!
 
   joinRide(rideCode: String!, role: String!): Ride!
 

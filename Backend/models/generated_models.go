@@ -20,11 +20,6 @@ type Query struct {
 }
 
 type UpdateUserInput struct {
-	Name              *string                `json:"name,omitempty"`
-	Email             *string                `json:"email,omitempty"`
-	IsActive          *bool                  `json:"isActive,omitempty"`
-	CurrentRide       *string                `json:"currentRide,omitempty"`
-	Picture           *string                `json:"picture,omitempty"`
 	PushSubscription  *PushSubscriptionInput `json:"pushSubscription,omitempty"`
 	ClearSubscription *bool                  `json:"clearSubscription,omitempty"`
 }

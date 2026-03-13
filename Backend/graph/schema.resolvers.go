@@ -244,6 +244,51 @@ func (r *mutationResolver) UpdateRide(ctx context.Context, rideCode string, requ
 	return &ride, nil
 }
 
+// SetUserPushNotification is the resolver for the setUserPushNotification field.
+func (r *mutationResolver) SetUserPushNotification(ctx context.Context, input models.UpdateUserInput) (*models.DBUsers, error) {
+	usersColl := db.GetCollection("bikeapp", "dbusers")
+
+	userIDHex := ctx.Value("userId").(string)
+	userID, err := primitive.ObjectIDFromHex(userIDHex)
+	if err != nil {
+		return nil, fmt.Errorf("invalid userId: %w", err)
+	}
+
+	update := bson.M{}
+
+	if input.PushSubscription != nil {
+		ps := input.PushSubscription
+		psUpdate := bson.M{
+			"endpoint": ps.Endpoint,
+			"keys": bson.M{
+				"p256dh": ps.Keys.P256dh,
+				"auth":   ps.Keys.Auth,
+			},
+		}
+		update["pushSubscription"] = psUpdate
+	}
+	if input.ClearSubscription != nil {
+		update["pushSubscription"] = nil
+	}
+
+	if len(update) == 0 {
+		return nil, fmt.Errorf("no fields to update")
+	}
+
+	_, err = usersColl.UpdateOne(ctx, bson.M{"_id": userID}, bson.M{"$set": update})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update user: %w", err)
+	}
+
+	var user models.DBUsers
+	err = usersColl.FindOne(ctx, bson.M{"_id": userID}).Decode(&user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch updated user: %w", err)
+	}
+
+	return &user, nil
+}
+
 // --- JoinRide ---
 func (r *mutationResolver) JoinRide(ctx context.Context, rideCode string, role string) (*models.Ride, error) {
 	userIDHex := ctx.Value("userId").(string)
