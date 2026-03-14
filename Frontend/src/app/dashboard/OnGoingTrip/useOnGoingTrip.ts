@@ -3,6 +3,7 @@ import { UPDATE_RIDE } from "@/lib/graphql/mutation";
 import { DashboardState, RideState } from "@/stores/types";
 import { useAuth } from "@/stores/useAuth";
 import { useSocket } from "@/stores/useSocket";
+import { useOtherUsers } from "@/stores/useOtherUsers";
 import { useQuery, useMutation } from "@apollo/client/react";
 import useAnnouncer from "@/hooks/useAnnouncer";
 import { useCallback, useEffect } from "react";
@@ -121,5 +122,6 @@ export function useOnGoingTrip(
     announcements,
     removeAnnouncement,
     handleSendSignal,
+    otherUsers: useOtherUsers.getState().users,
   };
 }
