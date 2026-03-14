@@ -148,5 +148,6 @@ export interface OtherUsersStore {
   setUsersLocation: (userLocations: Record<string, GeoLocation>) => void;
   getUserById: (id: string) => UserState | undefined;
   fetchUsersByIds: (ids: string[]) => Promise<void>;
+  clearUsersLocations: () => void;
   clearUsers: () => void;
 }

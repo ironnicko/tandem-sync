@@ -105,5 +105,16 @@ export const useOtherUsers = create<OtherUsersStore>((set, get) => ({
     }
   },
 
+  clearUsersLocations: () =>
+    set((state) => {
+      const clearedUsers = { ...state.users };
+      Object.keys(clearedUsers).forEach((userId) => {
+        if (clearedUsers[userId]) {
+          clearedUsers[userId] = { ...clearedUsers[userId], location: null };
+        }
+      });
+      return { users: clearedUsers };
+    }),
+
   clearUsers: () => set({ users: {} }),
 }));
