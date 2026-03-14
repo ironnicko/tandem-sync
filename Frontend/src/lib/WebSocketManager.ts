@@ -69,7 +69,6 @@ export class WebSocketManager {
     this.rws.addEventListener("open", this.handleOpen);
     this.rws.addEventListener("message", this.handleMessage);
     this.rws.addEventListener("close", this.handleClose);
-    this.rws.addEventListener("error", this.handleError);
   }
 
   send(data: unknown) {
@@ -138,15 +137,6 @@ export class WebSocketManager {
     }
   };
 
-  // RWS ships its own ErrorEvent (not the DOM global) — must match exactly.
-  // Must NOT be async: the listener type is `(event: ErrorEvent) => void`.
-  private handleError = (e: ErrorEvent) => {
-    console.error("[WS] Error:", e.error);
-    // Fire-and-forget token refresh — errors are swallowed intentionally
-    api.post("/auth/refresh").catch(() => {
-      console.error("[WS] Token refresh failed");
-    });
-  };
 
   // ─── Dormancy ──────────────────────────────────────────────────────────────
 
@@ -186,7 +176,6 @@ export class WebSocketManager {
       this.rws.removeEventListener("open", this.handleOpen);
       this.rws.removeEventListener("message", this.handleMessage);
       this.rws.removeEventListener("close", this.handleClose);
-      this.rws.removeEventListener("error", this.handleError);
       this.rws.close();
       this.rws = null;
     }
