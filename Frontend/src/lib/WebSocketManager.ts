@@ -7,6 +7,9 @@ export class WebSocketManager {
     private readonly token: string;
     private readonly onMessage: (msg: any) => void;
     private readonly reconnectDelay = 5000;
+    private readonly dormancyTimeout = 30000; // 30 seconds
+    private dormancyCheckInterval: NodeJS.Timeout | null = null;
+    private lastActivityTime: number = 0;
 
     private messageQueue: any[] = [];
 
@@ -25,6 +28,8 @@ export class WebSocketManager {
 
         this.ws.onopen = () => {
             console.log("[WS] Connected");
+            this.lastActivityTime = Date.now();
+            this.startDormancyCheck();
 
             // flush queued messages
             this.messageQueue.forEach((msg) =>
@@ -34,7 +39,10 @@ export class WebSocketManager {
             this.messageQueue = [];
         };
 
-        this.ws.onmessage = (e) => this.onMessage(JSON.parse(e.data));
+        this.ws.onmessage = (e) => {
+            this.lastActivityTime = Date.now();
+            this.onMessage(JSON.parse(e.data));
+        };
         this.ws.onclose = () => {
             console.log("[WS] Disconnected, retrying...");
             this.reconnectTimeout = setTimeout(
@@ -50,6 +58,7 @@ export class WebSocketManager {
 
     send(data: any) {
         if (this.ws?.readyState === WebSocket.OPEN) {
+            this.lastActivityTime = Date.now();
             this.ws.send(JSON.stringify(data));
         } else {
             if (data.eventType != "sendLocation") {
@@ -59,8 +68,28 @@ export class WebSocketManager {
         }
     }
 
+    private startDormancyCheck() {
+        if (this.dormancyCheckInterval) clearInterval(this.dormancyCheckInterval);
+
+        this.dormancyCheckInterval = setInterval(() => {
+            const timeSinceLastActivity = Date.now() - this.lastActivityTime;
+            if (timeSinceLastActivity > this.dormancyTimeout) {
+                console.log("[WS] Connection dormant for 30s, closing");
+                this.ws?.close();
+            }
+        }, 5000); // Check every 5 seconds
+    }
+
+    private stopDormancyCheck() {
+        if (this.dormancyCheckInterval) {
+            clearInterval(this.dormancyCheckInterval);
+            this.dormancyCheckInterval = null;
+        }
+    }
+
     disconnect() {
         if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
+        this.stopDormancyCheck();
         this.ws?.close();
         this.ws = null;
     }
