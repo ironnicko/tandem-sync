@@ -64,6 +64,11 @@ export const useSocket = create<SocketState>((set, get) => {
     },
 
     joinRide: (data) => {
+      const currentRide = useAuth.getState().user?.currentRide;
+      // Leave previous ride if in a different one
+      if (currentRide && currentRide !== data.rideCode) {
+        manager?.send({ eventType: "leaveRide", data: { rideCode: currentRide } });
+      }
       manager?.send({ eventType: "joinRide", data });
       set({ inRoom: true });
     },
