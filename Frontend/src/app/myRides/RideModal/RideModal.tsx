@@ -30,8 +30,7 @@ interface RideModalProps {
 
 export default function RideModal({ ride, onClose }: RideModalProps) {
   const { user, setUser } = useAuth();
-  const { joinRide, endRide, leaveRide, connect, disconnect } =
-    useSocket.getState();
+  const { joinRide, endRide, leaveRide, connect } = useSocket.getState();
   const { replaceRide } = useRides();
   const [currentRide, setCurrentRide] = useState(ride);
   const [formState, setFormState] = useState<Partial<UpdateRideParams>>({
@@ -78,7 +77,8 @@ export default function RideModal({ ride, onClose }: RideModalProps) {
         // Send Out Notifications
       } else if (newStatus === "ended") {
         endRide({ rideCode: ride.rideCode });
-        setUser({ ...user!, currentRide: null });
+        if (user.currentRide === ride.rideCode)
+          leaveRide({ rideCode: ride.rideCode });
         toast.success("Ride ended!");
         // Send Out Notifications
       } else {
@@ -106,7 +106,6 @@ export default function RideModal({ ride, onClose }: RideModalProps) {
     setUser({ ...user!, currentRide: null });
     await handleRideChange(null, "remove");
     leaveRide({ rideCode: ride.rideCode });
-    disconnect();
   };
 
   return (

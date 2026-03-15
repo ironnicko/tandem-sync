@@ -67,7 +67,11 @@ export const useSocket = create<SocketState>((set) => {
 
     leaveRide: (data) => {
       socket().send({ eventType: "leaveRide", data });
-      set({ inRoom: false });
+      disconnectSocket();
+      set({ isConnected: false, inRoom: false });
+      const { user, setUser } = useAuth.getState();
+      setUser({ ...user!, currentRide: null });
+      useOtherUsers.getState().clearUsersLocations();
     },
 
     endRide: (data) => {

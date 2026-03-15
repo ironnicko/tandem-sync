@@ -11,11 +11,10 @@ export function useOnGoingTrip(
   updateDashboard: (updates: Partial<DashboardState>) => void,
   userLocation: DashboardState["userLocation"],
 ) {
-  const { user, setUser } = useAuth();
+  const { user } = useAuth();
   const {
     joinRide,
     leaveRide,
-    disconnect,
     sendSignal,
     inRoom,
     sendLocation,
@@ -39,10 +38,6 @@ export function useOnGoingTrip(
     const rideCode = data.ride.rideCode;
     onRideEnded(() => {
       leaveRide({ rideCode });
-      setTimeout(disconnect, 0);
-      setUser({ ...user!, currentRide: null });
-      useOtherUsers.getState().clearUsersLocations();
-      updateDashboard({ fromLocation: null, toLocation: null });
     });
     return () => {
       onRideEnded(null);
@@ -52,14 +47,10 @@ export function useOnGoingTrip(
   useEffect(() => {
     if (!data?.ride?.rideCode) return;
 
-    const { destination, start, endedAt } = data.ride;
+    const { destination, start } = data.ride;
     updateDashboard({ fromLocation: start, toLocation: destination });
 
-    if (endedAt) {
-      setUser({ ...user, currentRide: null });
-      updateDashboard({ fromLocation: null, toLocation: null });
-    }
-  }, [data?.ride?.rideCode, data?.ride?.endedAt]);
+  }, [data?.ride?.rideCode]);
 
   useEffect(() => {
     const reconnect = () => {
