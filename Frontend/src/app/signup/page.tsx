@@ -18,7 +18,7 @@ export default function SignUp() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const redirectUrl = searchParams.get("redirect") || "/dashboard";
+  const redirectUrl = encodeURIComponent(searchParams.get("redirect") || "/dashboard");
 
   const {signup} = useAuth()
 
