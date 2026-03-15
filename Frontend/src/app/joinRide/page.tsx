@@ -61,12 +61,12 @@ export default function JoinRidePage() {
 
   if (!rideCode)
     return <p className="text-center mt-10">No ride code provided.</p>;
-  if (!invitedBy)
-    return (
-      <p className="text-center mt-10">
-        You must be invited by someone to join.
-      </p>
-    );
+  // if (!invitedBy)
+  //   return (
+  //     <p className="text-center mt-10">
+  //       You must be invited by someone to join.
+  //     </p>
+  //   );
   if (loading)
     return <p className="text-center mt-10">Loading ride details...</p>;
   if (error)

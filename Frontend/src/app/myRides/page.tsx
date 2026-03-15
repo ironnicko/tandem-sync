@@ -6,12 +6,14 @@ import { ArrowLeft, Bike, Loader } from "lucide-react";
 import { useEffect, useState } from "react";
 import RidesList from "./RideList";
 import RideModal from "./RideModal/RideModal";
+import JoinRideModal from "./JoinRideModal";
 import { RideState } from "@/stores/types";
 import { useRides } from "@/stores/useRides";
 
 export default function MyRidesPage() {
   const router = useRouter();
   const [selectedRide, setSelectedRide] = useState<RideState | null>(null);
+  const [joinRideOpen, setJoinRideOpen] = useState(false);
   const { rides, setRides } = useRides();
 
   const { data, loading, error } = useQuery<{ myRides: RideState[] }>(
@@ -35,14 +37,24 @@ export default function MyRidesPage() {
 
   return (
     <div className="w-full h-screen p-4 bg-gray-50">
-      <div className="flex flex-row gap-5 items-center mb-4">
-        <h1
-          onClick={() => router.push("/dashboard")}
-          className="cursor-pointer underline text-gray-600 hover:text-gray-800"
+      <div className="flex flex-row justify-between items-center mb-4">
+        <div className="flex flex-row gap-5 items-center">
+          <h1
+            onClick={() => router.push("/dashboard")}
+            className="cursor-pointer underline text-gray-600 hover:text-gray-800"
+          >
+            <ArrowLeft size={18} />
+          </h1>
+
+          <h1 className="text-2xl font-bold">My Rides</h1>
+        </div>
+
+        <button
+          onClick={() => setJoinRideOpen(true)}
+          className="px-4 py-2 bg-black cursor-pointer text-white rounded-lg hover:bg-gray-800"
         >
-          <ArrowLeft size={18} />
-        </h1>
-        <h1 className="text-2xl font-bold">My Rides</h1>
+          Join Ride
+        </button>
       </div>
 
       {rides?.length ? (
@@ -62,6 +74,16 @@ export default function MyRidesPage() {
           ride={selectedRide}
           onClose={() => {
             setSelectedRide(null);
+          }}
+        />
+      )}
+
+      {joinRideOpen && (
+        <JoinRideModal
+          onClose={() => setJoinRideOpen(false)}
+          onJoin={(code) => {
+            router.push(`/joinRide?rideCode=${code}`);
+            setJoinRideOpen(false);
           }}
         />
       )}
