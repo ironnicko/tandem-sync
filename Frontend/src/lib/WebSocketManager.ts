@@ -1,17 +1,12 @@
 import ReconnectingWebSocket from "reconnecting-websocket";
-import type { CloseEvent, ErrorEvent } from "reconnecting-websocket/dist/events";
-import api from "./axios";
+import type { CloseEvent } from "reconnecting-websocket/dist/events";
 
 export type WSStatus = "connecting" | "open" | "closed" | "dormant";
 
 export interface WebSocketManagerOptions {
-  /** How long with no activity before the connection is considered dormant and closed. Default: 30s */
   dormancyTimeout?: number;
-  /** How often to check for dormancy. Default: 5s */
   dormancyCheckInterval?: number;
-  /** Max messages to queue while disconnected. Default: 50 */
   maxQueueSize?: number;
-  /** Called whenever the connection status changes */
   onStatusChange?: (status: WSStatus) => void;
 }
 
@@ -24,7 +19,7 @@ export class WebSocketManager {
   private readonly dormancyTimeout: number;
   private readonly dormancyCheckMs: number;
   private readonly maxQueueSize: number;
-  private readonly onStatusChange?: (status: WSStatus) => void;
+  public readonly onStatusChange?: (status: WSStatus) => void;
 
   private dormancyCheckInterval: ReturnType<typeof setInterval> | null = null;
   private lastActivityTime = 0;
@@ -46,10 +41,8 @@ export class WebSocketManager {
     this.onStatusChange = options.onStatusChange;
   }
 
-  // ─── Public API ────────────────────────────────────────────────────────────
-
   connect() {
-    if (this.rws) return; // Already managing a connection
+    if (this.rws) return;
 
     this.intentionalClose = false;
 
@@ -72,20 +65,26 @@ export class WebSocketManager {
   }
 
   send(data: unknown) {
+    if (!this.rws) {
+      console.log("[WS] Socket dormant, reconnecting");
+      this.connect();
+    }
+
     if (this.rws?.readyState === WebSocket.OPEN) {
       this.lastActivityTime = Date.now();
       this.rws.send(JSON.stringify(data));
       return;
     }
 
-    // Drop location pings silently — they're time-sensitive and stale when replayed
     const event = data as Record<string, unknown>;
+
     if (event.eventType === "sendLocation") return;
 
     if (this.messageQueue.length >= this.maxQueueSize) {
       console.warn("[WS] Queue full, dropping oldest message");
       this.messageQueue.shift();
     }
+
     this.messageQueue.push(data);
   }
 
@@ -96,7 +95,8 @@ export class WebSocketManager {
   }
 
   get status(): WSStatus {
-    if (!this.rws) return "closed";
+    if (!this.rws) return "dormant";
+
     switch (this.rws.readyState) {
       case WebSocket.CONNECTING:
         return "connecting";
@@ -106,8 +106,6 @@ export class WebSocketManager {
         return "closed";
     }
   }
-
-  // ─── Handlers ──────────────────────────────────────────────────────────────
 
   private handleOpen = () => {
     console.log("[WS] Connected");
@@ -126,7 +124,6 @@ export class WebSocketManager {
     }
   };
 
-  // RWS ships its own CloseEvent (not the DOM global) — must match exactly
   private handleClose = (_e: CloseEvent) => {
     this.stopDormancyCheck();
     if (this.intentionalClose) {
@@ -136,9 +133,6 @@ export class WebSocketManager {
       this.onStatusChange?.("connecting");
     }
   };
-
-
-  // ─── Dormancy ──────────────────────────────────────────────────────────────
 
   private startDormancyCheck() {
     this.stopDormancyCheck();
@@ -158,8 +152,6 @@ export class WebSocketManager {
       this.dormancyCheckInterval = null;
     }
   }
-
-  // ─── Helpers ───────────────────────────────────────────────────────────────
 
   private flushQueue() {
     const queued = [...this.messageQueue];

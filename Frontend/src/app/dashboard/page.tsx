@@ -41,28 +41,75 @@ export default function DashboardPage() {
   const { toLocation, fromLocation, userLocation } = dashboardState;
 
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) =>
+    if (!navigator.geolocation) {
+      console.error("Geolocation not supported");
+      return;
+    }
+
+    let lastLocation: { lat: number; lng: number } | null = null;
+
+    const distanceMeters = (
+      a: { lat: number; lng: number },
+      b: { lat: number; lng: number },
+    ) => {
+      const R = 6371000;
+
+      const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+      const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+
+      const lat1 = (a.lat * Math.PI) / 180;
+      const lat2 = (b.lat * Math.PI) / 180;
+
+      const x =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.sin(dLng / 2) *
+          Math.sin(dLng / 2) *
+          Math.cos(lat1) *
+          Math.cos(lat2);
+
+      return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+    };
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const next = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        };
+
+        if (lastLocation) {
+          const dist = distanceMeters(lastLocation, next);
+
+          // Ignore tiny GPS jitter (<8m)
+          if (dist < 8) return;
+        }
+
+        lastLocation = next;
+
         setDashboardState((prev) => ({
           ...prev,
-          userLocation: {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          },
-        })),
-      (err) => console.error(err),
-      { enableHighAccuracy: true },
+          userLocation: next,
+        }));
+      },
+      (err) => console.error("Geolocation error:", err),
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 10000,
+      },
     );
+
+    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
   useEffect(() => {
-    const {user, setUser } = useAuth.getState();
+    const { user, setUser } = useAuth.getState();
     const getData = async () => {
       const { data: gqlData } = await gqlClient.query<{ me: UserState }>({
         query: ME,
         fetchPolicy: "network-only",
       });
-      setUser({...user, ...gqlData.me});
+      setUser({ ...user, ...gqlData.me });
     };
     getData();
   }, []);

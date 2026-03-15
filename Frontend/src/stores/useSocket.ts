@@ -2,16 +2,11 @@ import { create } from "zustand";
 import { SocketState } from "./types";
 import { useAuth } from "./useAuth";
 import { useOtherUsers } from "./useOtherUsers";
+import { getSocket, disconnectSocket } from "@/lib/socket";
 
-import { WebSocketManager } from "@/lib/WebSocketManager";
-
-export const useSocket = create<SocketState>((set, get) => {
-
-  let manager: WebSocketManager | null = null;
-  let announceCb:
-    | ((msg: string, type: "info" | "join" | "success") => void)
-    | null = null;
-  let rideEndedCb: (() => void) | null = null;
+export const useSocket = create<SocketState>((set) => {
+  let announceCb: any = null;
+  let rideEndedCb: any = null;
 
   const handleMessage = (msg: any) => {
     const otherUsers = useOtherUsers.getState();
@@ -21,19 +16,25 @@ export const useSocket = create<SocketState>((set, get) => {
       case "updateLocations":
         otherUsers.setUsersLocation(msg.data.locations);
         break;
+
       case "sentSignal":
         announceCb?.(`${userName} : ${msg.data.signalType}`, "info");
         break;
+
       case "userJoined":
         otherUsers.fetchUsersByIds([msg.data.userId]).then(() => {
-          const joinedName = useOtherUsers.getState().getUserById(msg.data.userId)?.name || "Someone";
+          const joinedName =
+            useOtherUsers.getState().getUserById(msg.data.userId)?.name ||
+            "Someone";
           announceCb?.(`${joinedName} joined the ride`, "join");
         });
         break;
+
       case "userLeft":
         announceCb?.(`${userName} left the ride`, "info");
         otherUsers.setUserLocation(msg.data.userId, null);
         break;
+
       case "rideEnded":
         announceCb?.(`${userName} ended the ride`, "info");
         rideEndedCb?.();
@@ -41,50 +42,42 @@ export const useSocket = create<SocketState>((set, get) => {
     }
   };
 
+  const socket = () =>
+    getSocket(useAuth.getState().accessToken!, handleMessage);
+
   return {
     isConnected: false,
     inRoom: false,
     error: null,
 
     connect: () => {
-      const token = useAuth.getState().accessToken;
-      manager = new WebSocketManager(
-        process.env.NEXT_PUBLIC_SOCKET_URL!,
-        token,
-        handleMessage,
-      );
-      manager.connect();
+      socket();
       set({ isConnected: true });
     },
 
     disconnect: () => {
-      manager?.disconnect();
-      manager = null;
+      disconnectSocket();
       set({ isConnected: false, inRoom: false });
     },
 
     joinRide: (data) => {
-      const currentRide = useAuth.getState().user?.currentRide;
-      // Leave previous ride if in a different one
-      if (currentRide && currentRide !== data.rideCode) {
-        manager?.send({ eventType: "leaveRide", data: { rideCode: currentRide } });
-      }
-      manager?.send({ eventType: "joinRide", data });
+      socket().send({ eventType: "joinRide", data });
       set({ inRoom: true });
     },
 
-    endRide: (data) => {
-      manager?.send({ eventType: "endRide", data });
-      set({ inRoom: false });
-    },
-
     leaveRide: (data) => {
-      manager?.send({ eventType: "leaveRide", data });
+      socket().send({ eventType: "leaveRide", data });
       set({ inRoom: false });
     },
 
-    sendLocation: (data) => manager?.send({ eventType: "sendLocation", data }),
-    sendSignal: (data) => manager?.send({ eventType: "sendSignal", data }),
+    endRide: (data) => {
+      socket().send({ eventType: "endRide", data });
+      set({ inRoom: false });
+    },
+
+    sendLocation: (data) => socket().send({ eventType: "sendLocation", data }),
+
+    sendSignal: (data) => socket().send({ eventType: "sendSignal", data }),
 
     onAnnounce: (cb) => (announceCb = cb),
     onRideEnded: (cb) => (rideEndedCb = cb),

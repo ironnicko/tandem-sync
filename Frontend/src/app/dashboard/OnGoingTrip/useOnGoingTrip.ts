@@ -17,7 +17,6 @@ export function useOnGoingTrip(
     leaveRide,
     disconnect,
     sendSignal,
-    connect,
     inRoom,
     sendLocation,
     onAnnounce,
@@ -40,7 +39,7 @@ export function useOnGoingTrip(
     const rideCode = data.ride.rideCode;
     onRideEnded(() => {
       leaveRide({ rideCode });
-      disconnect();
+      setTimeout(disconnect, 0);
       setUser({ ...user!, currentRide: null });
       useOtherUsers.getState().clearUsersLocations();
       updateDashboard({ fromLocation: null, toLocation: null });
@@ -63,8 +62,16 @@ export function useOnGoingTrip(
   }, [data?.ride?.rideCode, data?.ride?.endedAt]);
 
   useEffect(() => {
+    const reconnect = () => {
+      useSocket.getState().connect();
+    };
+
+    window.addEventListener("focus", reconnect);
+    return () => window.removeEventListener("focus", reconnect);
+  }, []);
+
+  useEffect(() => {
     if (data?.ride?.rideCode && !inRoom) {
-      connect();
       joinRide({ rideCode: data.ride.rideCode });
     }
   }, [data?.ride?.rideCode, inRoom]);
