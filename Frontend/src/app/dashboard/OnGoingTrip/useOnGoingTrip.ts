@@ -38,6 +38,7 @@ export function useOnGoingTrip(
     const rideCode = data.ride.rideCode;
     onRideEnded(() => {
       leaveRide({ rideCode });
+      updateDashboard({ fromLocation: null, toLocation: null });
     });
     return () => {
       onRideEnded(null);
@@ -49,7 +50,6 @@ export function useOnGoingTrip(
 
     const { destination, start } = data.ride;
     updateDashboard({ fromLocation: start, toLocation: destination });
-
   }, [data?.ride?.rideCode]);
 
   useEffect(() => {
