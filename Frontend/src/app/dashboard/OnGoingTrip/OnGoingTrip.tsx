@@ -1,6 +1,5 @@
 import { Profile } from "@/components/Profile";
 import Timer from "@/components/Timer";
-import Announcer from "@/components/Announcer";
 import { DashboardState } from "@/stores/types";
 import { useOnGoingTrip } from "./useOnGoingTrip";
 import SignalControls from "./SignalControls";
@@ -15,7 +14,7 @@ interface OnGoingTripProps {
 }
 
 export const OnGoingTrip = ({ updateDashboard, dashboardState }: OnGoingTripProps) => {
-  const { ride, loading, error, announcements, removeAnnouncement, handleSendSignal, otherUsers } =
+  const { ride, loading, error, handleSendSignal, otherUsers } =
     useOnGoingTrip(updateDashboard, dashboardState.userLocation);
   const [showTripInfo, setShowTripInfo] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
@@ -25,7 +24,6 @@ export const OnGoingTrip = ({ updateDashboard, dashboardState }: OnGoingTripProp
 
   return (
     <>
-      <Announcer announcements={announcements} removeAnnouncement={removeAnnouncement} />
       <Profile className="absolute top-4 left-[12vw] flex flex-col items-center" />
 
       <div className="absolute top-4 right-6 max-w-sm space-y-3">

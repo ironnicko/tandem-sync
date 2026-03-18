@@ -7,7 +7,7 @@ import { DashboardState, UserState } from "@/stores/types";
 import BottomSection from "./CreateTrip/BottomSection";
 import { useAuth } from "@/stores/useAuth";
 import { OnGoingTrip } from "./OnGoingTrip/OnGoingTrip";
-import { CircleDot } from "lucide-react";
+import { CircleDot, Loader } from "lucide-react";
 import { useOtherUsers } from "@/stores/useOtherUsers";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import { gqlClient } from "@/lib/graphql/client";
@@ -117,7 +117,7 @@ export default function DashboardPage() {
   const updateDashboard = (updates: Partial<DashboardState>) =>
     setDashboardState((prev) => ({ ...prev, ...updates }));
 
-  if (!userLocation) return <p className="p-4">Fetching user location...</p>;
+  if (!userLocation) return <Loader className="animate-spin" />;
 
   return (
     <div className="relative w-screen h-screen overflow-hidden">

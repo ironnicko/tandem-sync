@@ -24,11 +24,24 @@
 //     };
 //
 
-export type Announcement = {
+export type AnnouncementType = "join" | "leave" | "success" | "info";
+
+export interface Announcement {
   id: string;
-  type?: "info" | "success" | "join";
   message: string;
-};
+  type: AnnouncementType;
+  createdAt: number;
+}
+
+export interface AnnouncerStore {
+  announcements: Announcement[];
+  lastActivity: number;
+
+  addAnnouncement: (msg: string, type?: AnnouncementType) => void;
+  removeAnnouncement: (id: string) => void;
+  clearAnnouncements: () => void;
+  resetActivity: () => void;
+}
 
 export interface GeoLocation {
   lat: number;
@@ -103,9 +116,6 @@ export interface SocketState {
   }) => void;
   leaveRide: (payload: { rideCode: string }) => void;
   endRide: (payload: { rideCode: string }) => void;
-  onAnnounce: (
-    cb: (name: string, info: "join" | "info" | "success") => void,
-  ) => void;
   onRideEnded: (cb: (() => void) | null) => void;
 }
 

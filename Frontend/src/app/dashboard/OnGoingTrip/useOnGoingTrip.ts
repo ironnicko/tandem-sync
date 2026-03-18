@@ -1,10 +1,13 @@
 import { RIDE } from "@/lib/graphql/query";
-import { DashboardState, RideState } from "@/stores/types";
+import {
+  DashboardState,
+  RideState,
+} from "@/stores/types";
 import { useAuth } from "@/stores/useAuth";
 import { useSocket } from "@/stores/useSocket";
 import { useOtherUsers } from "@/stores/useOtherUsers";
 import { useQuery } from "@apollo/client/react";
-import useAnnouncer from "@/hooks/useAnnouncer";
+import { useAnnouncerStore } from "@/stores/useAnnoucer";
 import { useCallback, useEffect } from "react";
 
 export function useOnGoingTrip(
@@ -18,20 +21,14 @@ export function useOnGoingTrip(
     sendSignal,
     inRoom,
     sendLocation,
-    onAnnounce,
     onRideEnded,
   } = useSocket();
   const { data, loading, error } = useQuery<{ ride: RideState }>(RIDE, {
     variables: { rideCode: user.currentRide },
     fetchPolicy: "cache-and-network",
   });
-  const { announcements, addAnnouncement, removeAnnouncement } = useAnnouncer();
-
-  useEffect(() => {
-    onAnnounce((name: string, info: "join" | "info" | "success") => {
-      addAnnouncement(name, info);
-    });
-  }, [onAnnounce, addAnnouncement]);
+  const { announcements, addAnnouncement, removeAnnouncement } =
+    useAnnouncerStore();
 
   useEffect(() => {
     if (!data?.ride?.rideCode) return;

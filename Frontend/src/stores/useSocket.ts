@@ -2,14 +2,15 @@ import { create } from "zustand";
 import { SocketState } from "./types";
 import { useAuth } from "./useAuth";
 import { useOtherUsers } from "./useOtherUsers";
+import { useAnnouncerStore } from "./useAnnoucer";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 
 export const useSocket = create<SocketState>((set) => {
-  let announceCb: any = null;
   let rideEndedCb: any = null;
 
   const handleMessage = (msg: any) => {
     const otherUsers = useOtherUsers.getState();
+    const announcer = useAnnouncerStore.getState();
     const userName = otherUsers.getUserById(msg.data.userId)?.name || "Someone";
 
     switch (msg.eventType) {
@@ -18,7 +19,7 @@ export const useSocket = create<SocketState>((set) => {
         break;
 
       case "sentSignal":
-        announceCb?.(`${userName} : ${msg.data.signalType}`, "info");
+        announcer.addAnnouncement(`${userName} : ${msg.data.signalType}`, "info");
         break;
 
       case "userJoined":
@@ -26,17 +27,17 @@ export const useSocket = create<SocketState>((set) => {
           const joinedName =
             useOtherUsers.getState().getUserById(msg.data.userId)?.name ||
             "Someone";
-          announceCb?.(`${joinedName} joined the ride`, "join");
+          announcer.addAnnouncement(`${joinedName} joined the ride`, "join");
         });
         break;
 
       case "userLeft":
-        announceCb?.(`${userName} left the ride`, "info");
+        announcer.addAnnouncement(`${userName} left the ride`, "leave");
         otherUsers.setUserLocation(msg.data.userId, null);
         break;
 
       case "rideEnded":
-        announceCb?.(`${userName} ended the ride`, "info");
+        announcer.addAnnouncement(`${userName} ended the ride`, "info");
         rideEndedCb?.();
         break;
     }
@@ -67,8 +68,7 @@ export const useSocket = create<SocketState>((set) => {
 
     leaveRide: (data) => {
       socket().send({ eventType: "leaveRide", data });
-      disconnectSocket();
-      set({ isConnected: false, inRoom: false });
+      set({ inRoom: false });
       const { user, setUser } = useAuth.getState();
       setUser({ ...user!, currentRide: null });
       useOtherUsers.getState().clearUsersLocations();
@@ -76,14 +76,12 @@ export const useSocket = create<SocketState>((set) => {
 
     endRide: (data) => {
       socket().send({ eventType: "endRide", data });
-      set({ inRoom: false });
     },
 
     sendLocation: (data) => socket().send({ eventType: "sendLocation", data }),
 
     sendSignal: (data) => socket().send({ eventType: "sendSignal", data }),
 
-    onAnnounce: (cb) => (announceCb = cb),
     onRideEnded: (cb) => (rideEndedCb = cb),
   };
 });

@@ -39,7 +39,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ToastContainer draggable draggablePercent={50}></ToastContainer>
+        <ToastContainer draggable draggablePercent={20}></ToastContainer>
         <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-blue-50 to-white text-center">
           <ClientWrappers>
             <Suspense fallback={<Loader className="animate-spin" />}>
