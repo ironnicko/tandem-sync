@@ -19,8 +19,8 @@ func main() {
 		cfg = config.Envs
 	}
 
-	db.Connect(cfg.MongoURI)
-	// kafka.InitProducer(cfg.KafkaBrokers)
+	db.Connect()
+	db.ConnectRedis()
 	utils.InitJWT(cfg.JWTSecret)
 
 	r := gin.Default()

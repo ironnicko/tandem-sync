@@ -24,6 +24,7 @@ func InitializeRoutes(r *gin.Engine) {
 	v1.Use(utils.AuthMiddleware())
 	// v1.POST("/graphql", gin.WrapH(srv))
 	v1.POST("/authenticated", handlers.Authenticated)
+	v1.POST("/route", handlers.RouteHandler)
 	v1.POST("/graphql", func(c *gin.Context) {
 		userID, _ := c.Get("userId")
 		ctx := context.WithValue(c.Request.Context(), "userId", userID)

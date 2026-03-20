@@ -26,7 +26,7 @@ export default function LandingPage() {
         </Button>
     </div>
             <div className="flex justify-center text-gray-400 text-sm py-2">
-              &copy; 2025 TandemSync. All rights reserved.
+              &copy; 2026 TandemSync. All rights reserved.
           </div>
     </>
     )

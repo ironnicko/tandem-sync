@@ -16,7 +16,7 @@ export default function ClientWrappers({
     <APIProvider
       apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string}
       solutionChannel="GMP_devsite_samples_v3_rgmautocomplete"
-      libraries={["places"]}
+      libraries={["places", "routes"]}
     >
       <ApolloProvider client={gqlClient}>
         <InstallPrompt />

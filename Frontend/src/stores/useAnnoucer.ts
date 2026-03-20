@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Announcement, AnnouncementType, AnnouncerStore } from "./types";
+import { Announcement, AnnouncerStore } from "./types";
 
 export const useAnnouncerStore = create<AnnouncerStore>((set) => ({
   announcements: [],

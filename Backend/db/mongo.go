@@ -4,18 +4,18 @@ import (
 	"context"
 	"log"
 	"time"
-
+	"github.com/ironnicko/tandem-sync/Backend/config"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var Client *mongo.Client
+var MongoClient *mongo.Client
 
-func Connect(uri string) *mongo.Client {
+func Connect() *mongo.Client {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(config.Envs.MongoURI))
 	if err != nil {
 		log.Fatalf("MongoDB connection error: %v", err)
 	}
@@ -25,11 +25,11 @@ func Connect(uri string) *mongo.Client {
 	}
 
 	log.Println("Connected to MongoDB")
-	Client = client
+	MongoClient = client
 
 	return client
 }
 
 func GetCollection(dbName, collName string) *mongo.Collection {
-	return Client.Database(dbName).Collection(collName)
+	return MongoClient.Database(dbName).Collection(collName)
 }
