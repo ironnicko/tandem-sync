@@ -1,9 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-
 import { AdvancedMarker, Map } from "@vis.gl/react-google-maps";
 import { FitBoundsHandler } from "@/components/FitBoundsHelper";
-import { DashboardState, UserState } from "@/stores/types";
+import { DashboardState, GeoLocation, UserState } from "@/stores/types";
 import BottomSection from "./CreateTrip/BottomSection";
 import { useAuth } from "@/stores/useAuth";
 import { OnGoingTrip } from "./OnGoingTrip/OnGoingTrip";
@@ -12,6 +11,28 @@ import { useOtherUsers } from "@/stores/useOtherUsers";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import { gqlClient } from "@/lib/graphql/client";
 import { ME } from "@/lib/graphql/query";
+import RoutePolyline from "@/components/RoutePolyline";
+import polyline from "@mapbox/polyline";
+import api from "@/lib/axios";
+
+const distanceMeters = (
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+) => {
+  const R = 6371000;
+
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+
+  const x =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLng / 2) * Math.sin(dLng / 2) * Math.cos(lat1) * Math.cos(lat2);
+
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+};
 
 function hashStringToHsl(str: string) {
   let hash = 0;
@@ -25,7 +46,7 @@ function hashStringToHsl(str: string) {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { users: otherUsers } = useOtherUsers();
-
+  const [routePath, setRoutePath] = useState<GeoLocation[]>([]);
   const [dashboardState, setDashboardState] = useState<DashboardState>({
     formIndex: 0,
     toLocation: null,
@@ -47,28 +68,6 @@ export default function DashboardPage() {
     }
 
     let lastLocation: { lat: number; lng: number } | null = null;
-
-    const distanceMeters = (
-      a: { lat: number; lng: number },
-      b: { lat: number; lng: number },
-    ) => {
-      const R = 6371000;
-
-      const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-      const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-
-      const lat1 = (a.lat * Math.PI) / 180;
-      const lat2 = (b.lat * Math.PI) / 180;
-
-      const x =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.sin(dLng / 2) *
-          Math.sin(dLng / 2) *
-          Math.cos(lat1) *
-          Math.cos(lat2);
-
-      return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-    };
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
@@ -114,6 +113,36 @@ export default function DashboardPage() {
     getData();
   }, []);
 
+  useEffect(() => {
+    if (!fromLocation || !toLocation) {
+      setRoutePath([]);
+      return;
+    }
+
+    const fetchRoute = async () => {
+      try {
+        const res = await api.post("/route", {
+          origin: fromLocation,
+          destination: toLocation,
+        });
+
+        const data = await res.data;
+
+        if (!data.polyline) return;
+
+        const decoded = polyline.decode(data.polyline);
+
+        const path = decoded.map(([lat, lng]) => ({ lat, lng }));
+
+        setRoutePath(path);
+      } catch (err) {
+        console.error("Route fetch failed:", err);
+      }
+    };
+
+    fetchRoute();
+  }, [fromLocation, toLocation]);
+
   const updateDashboard = (updates: Partial<DashboardState>) =>
     setDashboardState((prev) => ({ ...prev, ...updates }));
 
@@ -136,6 +165,7 @@ export default function DashboardPage() {
             <CircleDot className="text-blue-800 w-8 h-8" />
           </AdvancedMarker>
         )}
+        {routePath.length > 0 && <RoutePolyline path={routePath} />}
 
         {Object.entries(otherUsers)
           .filter(

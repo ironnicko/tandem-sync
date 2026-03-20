@@ -32,7 +32,7 @@ async function start() {
     session: {
       cookieCache: {
         enabled: true,
-        maxAge: 60 * 60, // 1 Hour, then Go falls back to DB lookup
+        maxAge: 24 * 60 * 60, // 1 Hour, then Go falls back to DB lookup
         strategy: "jwt",
       },
     },

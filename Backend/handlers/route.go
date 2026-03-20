@@ -72,7 +72,7 @@ func RouteHandler(c *gin.Context) {
 					"latLng": map[string]float64{"latitude": dLat, "longitude": dLng},
 				},
 			},
-			"travelMode":               "DRIVE",
+			"travelMode":               "TWO_WHEELER",
 			"routingPreference":        "TRAFFIC_AWARE",
 			"computeAlternativeRoutes": "false",
 			"languageCode":             "en-US",
@@ -103,7 +103,7 @@ func RouteHandler(c *gin.Context) {
 
 	// 🔥 Cache
 	if data, err := json.Marshal(result); err == nil {
-		db.RedisClient.Set(c, k, data, 10*time.Minute)
+		db.RedisClient.Set(c, k, data, 60*time.Minute)
 	}
 
 	c.JSON(http.StatusOK, result)
