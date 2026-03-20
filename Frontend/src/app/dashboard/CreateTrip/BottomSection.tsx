@@ -4,7 +4,7 @@ import { TripSettingsInputs } from "./TripSettingsInputs";
 import { DashboardState } from "@/stores/types";
 
 interface BottomSectionProps{
-      dashboardState: DashboardState
+      dashboardState: Partial<DashboardState>
       updateDashboard: (updates: Partial<DashboardState>) => void
 }
 

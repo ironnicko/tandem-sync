@@ -1,36 +1,64 @@
-import { RideState } from "@/stores/types";
+import { DashboardState, RouteData } from "@/stores/types";
 import { useEffect, useState } from "react";
 
-interface TimerProps{
-    ride : RideState
+interface TimerProps {
+  routeData: RouteData;
+  dashboardState: Partial<DashboardState>;
+  updateDashboard: (updates: Partial<DashboardState>) => void;
 }
 
-export default function Timer({ride} : TimerProps) {
-  const [elapsed, setElapsed] = useState("00:00:00");
+function getArrivalTime(durationStr: string): string {
+  const seconds = parseInt(durationStr.replace("s", ""), 10);
+  if (isNaN(seconds)) return "";
+
+  const arrival = new Date(Date.now() + seconds * 1000);
+
+  return arrival.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDistance(meters: number): string {
+  if (!meters || isNaN(meters)) return "0 m";
+
+  if (meters < 1000) return `${meters} m`;
+
+  const km = meters / 1000;
+  return `${km.toFixed(1)} km`;
+}
+
+export default function Timer({
+  routeData,
+  updateDashboard,
+  dashboardState,
+}: TimerProps) {
+  const [arrival, setArrival] = useState("");
+  const [distance, setDistance] = useState("");
 
   useEffect(() => {
-    if (!ride?.startedAt) return;
+    if (!routeData) return;
 
-    const start = new Date(ride.startedAt).getTime();
-
-    const tick = () => {
-      const now = Date.now();
-      const diff = Math.floor((now - start) / 1000);
-      const hrs = String(Math.floor(diff / 3600)).padStart(2, "0");
-      const mins = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
-      const secs = String(diff % 60).padStart(2, "0");
-      setElapsed(`${hrs}:${mins}:${secs}`);
-    };
-
-    tick();
-    const interval = setInterval(tick, 1000);
-
-    return () => clearInterval(interval);
-  }, [ride?.startedAt]);
+    setArrival(getArrivalTime(routeData.duration));
+    setDistance(formatDistance(routeData.distance));
+  }, [routeData]);
 
   return (
-    <div className="px-4 py-2 bg-black text-white rounded-lg shadow-md font-mono">
-        {elapsed}
+    <div className="px-4 py-2 bg-black text-white rounded-lg shadow-md font-mono flex gap-2 items-center">
+      <span>{distance}</span>
+
+      <button
+        onClick={() =>
+          updateDashboard({
+            fitTrigger: (dashboardState.fitTrigger || 0) + 1,
+          })
+        }
+        className="flex items-center justify-center w-6 h-6 rounded-full bg-white text-black hover:scale-110 transition shadow-sm"
+      >
+        <span className="w-2.5 h-2.5 rounded-full bg-black block"></span>
+      </button>
+
+      <span>{arrival}</span>
     </div>
   );
 }

@@ -23,7 +23,7 @@ export default function RoutePolyline({ path }: Props) {
     return () => {
       polyline.setMap(null); // cleanup
     };
-  }, [map, path]);
+  }, [path]);
 
   return null;
 }

@@ -8,37 +8,35 @@ interface FitBoundsHandlerProps {
   fromLocation: GeoLocation | null;
   toLocation: GeoLocation | null;
   otherUsers: Record<string, UserState>;
+  trigger?: number;
 }
 
-const isValidLocation = (loc: GeoLocation | null): loc is GeoLocation => {
-  return (
-    !!loc &&
-    typeof loc.lat === "number" &&
-    typeof loc.lng === "number" &&
-    Number.isFinite(loc.lat) &&
-    Number.isFinite(loc.lng)
-  );
-}
+const isValidLocation = (loc: GeoLocation): loc is GeoLocation => {
+  return Number.isFinite(loc.lat) && Number.isFinite(loc.lng);
+};
 
 export function FitBoundsHandler({
   fromLocation,
   toLocation,
   otherUsers,
+  trigger,
 }: FitBoundsHandlerProps) {
   const map = useMap();
   const lastFitRef = useRef<string | null>(null);
+  const lastTriggerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!map) return;
 
     const bounds = new google.maps.LatLngBounds();
     const points: GeoLocation[] = [];
-    
-    if (isValidLocation(fromLocation)) points.push(fromLocation);
-    if (isValidLocation(toLocation)) points.push(toLocation);
-    
+
+    if (fromLocation && isValidLocation(fromLocation))
+      points.push(fromLocation);
+    if (toLocation && isValidLocation(toLocation)) points.push(toLocation);
+
     Object.values(otherUsers).forEach((u) => {
-      if (isValidLocation(u.location)) {
+      if (u.location && isValidLocation(u.location)) {
         points.push(u.location);
       }
     });
@@ -47,9 +45,9 @@ export function FitBoundsHandler({
 
     // Create a hash to detect meaningful changes
     const hash = JSON.stringify(points.map((p) => [p.lat, p.lng]));
-    if (hash === lastFitRef.current) return;
-
+    if (lastTriggerRef.current === trigger && hash === lastFitRef.current) return;
     lastFitRef.current = hash;
+    lastTriggerRef.current = trigger;
 
     points.forEach((p) => {
       if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) {
@@ -69,7 +67,7 @@ export function FitBoundsHandler({
       left: 120,
       right: 120,
     });
-  }, [map, fromLocation, toLocation, otherUsers]);
+  }, [fromLocation, toLocation, otherUsers, trigger]);
 
   return null;
 }

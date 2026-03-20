@@ -2,7 +2,7 @@ import { PlaceAutocomplete } from "@/components/PlaceAutoComplete";
 import { DashboardState } from "@/stores/types";
 
 interface TripLocationInputsProps {
-  dashboardState: DashboardState
+  dashboardState: Partial<DashboardState>
   updateDashboard: (updates: Partial<DashboardState>) => void
 
 }

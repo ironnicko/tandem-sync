@@ -51,5 +51,5 @@ export default function GoogleRedirectHandler() {
     init();
   }, [router, searchParams]);
 
-  return <Loader className="animate-spin w-10 h-10 m-auto" />;
+  return <Loader className="animate-spin" />;
 }

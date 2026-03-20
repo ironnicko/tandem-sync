@@ -8,7 +8,7 @@ import { useRides } from "@/stores/useRides";
 import { useRef } from "react";
 
 interface TripSettingsInputsProps{
-    dashboardState: DashboardState
+    dashboardState: Partial<DashboardState>
     updateDashboard: (updates: Partial<DashboardState>) => void
 }
 

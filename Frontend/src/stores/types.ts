@@ -75,8 +75,15 @@ export interface RideState {
   tripName: string | null;
 }
 
+export interface RouteData {
+  polyline: GeoLocation[];
+  distance: number;
+  duration: string;
+}
+
 export interface DashboardState {
   formIndex: number;
+  fitTrigger: number;
   toLocation: GeoLocation | null;
   fromLocation: GeoLocation | null;
   userLocation: GeoLocation | null;
@@ -85,6 +92,7 @@ export interface DashboardState {
   maxRiders: number;
   visibility: "public" | "private";
   tripName: string | null;
+  routeData: RouteData | null;
 }
 
 export interface UserState {

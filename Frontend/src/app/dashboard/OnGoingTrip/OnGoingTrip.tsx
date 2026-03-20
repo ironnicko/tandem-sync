@@ -6,51 +6,72 @@ import SignalControls from "./SignalControls";
 import CurrentTripInfo from "./CurrentTripInfo";
 import RideParticipants from "./RideParticipants";
 import { useState } from "react";
-import { Users } from "lucide-react";
+import { Users, Info } from "lucide-react";
 
 interface OnGoingTripProps {
   updateDashboard: (updates: Partial<DashboardState>) => void;
-  dashboardState: DashboardState;
+  dashboardState: Partial<DashboardState>;
 }
 
-export const OnGoingTrip = ({ updateDashboard, dashboardState }: OnGoingTripProps) => {
-  const { ride, loading, error, handleSendSignal, otherUsers } =
-    useOnGoingTrip(updateDashboard, dashboardState.userLocation);
+export const OnGoingTrip = ({
+  updateDashboard,
+  dashboardState,
+}: OnGoingTripProps) => {
+  const { ride, loading, error, handleSendSignal, otherUsers } = useOnGoingTrip(
+    updateDashboard,
+    dashboardState.userLocation,
+  );
   const [showTripInfo, setShowTripInfo] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
+  const { routeData } = dashboardState;
 
   if (loading) return <p className="p-4">Loading Current Trip...</p>;
-  if (error) return <p className="p-4 text-red-600">Error loading Current Trip: {error.message}</p>;
+  if (error)
+    return (
+      <p className="p-4 text-red-600">
+        Error loading Current Trip: {error.message}
+      </p>
+    );
 
   return (
     <>
       <Profile className="absolute top-4 left-[12vw] flex flex-col items-center" />
 
-      <div className="absolute top-4 right-6 max-w-sm space-y-3">
+      <div className="absolute top-4 right-6 flex gap-2 max-w-sm">
         {showTripInfo && <CurrentTripInfo ride={ride} />}
-        {showParticipants && <RideParticipants ride={ride} otherUsers={otherUsers} />}
+        {showParticipants  && (
+          <RideParticipants ride={ride} otherUsers={otherUsers} />
+        )}
       </div>
 
+      <div className="absolute flex gap-2 top-6 right-10">
+        {/* Trip Info Button */}
+        <button
+          onClick={() => setShowTripInfo(!showTripInfo)}
+          className={`flex items-center justify-center px-4 py-2 border rounded-lg transition ${
+            showTripInfo
+              ? "bg-white text-black"
+              : "bg-black text-white hover:bg-gray-800"
+          }`}
+        >
+          <Info className="w-4 h-4" />
+        </button>
+
+        {/* Participants Button */}
+        <button
+          onClick={() => setShowParticipants(!showParticipants)}
+          className={`flex items-center justify-center px-3 py-2 border rounded-lg transition ${
+            showParticipants
+              ? "bg-white text-black"
+              : "bg-black text-white hover:bg-gray-800"
+          }`}
+        >
+          <Users className="w-4 h-4" />
+        </button>
+      </div>
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3">
-        <Timer ride={ride} />
+        <Timer dashboardState={dashboardState} updateDashboard={updateDashboard} routeData={routeData} />
         <SignalControls onSignal={handleSendSignal} />
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowTripInfo(!showTripInfo)}
-            className="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition"
-          >
-            {showTripInfo ? "Hide Trip Info" : "Show Trip Info"}
-          </button>
-
-          <button
-            onClick={() => setShowParticipants(!showParticipants)}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition"
-          >
-            <Users className="w-4 h-4" />
-            {showParticipants ? "Hide Participants" : "Show Participants"}
-          </button>
-        </div>
       </div>
     </>
   );

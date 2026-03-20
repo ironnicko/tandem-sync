@@ -2,7 +2,12 @@
 import { useEffect, useState } from "react";
 import { AdvancedMarker, Map } from "@vis.gl/react-google-maps";
 import { FitBoundsHandler } from "@/components/FitBoundsHelper";
-import { DashboardState, GeoLocation, UserState } from "@/stores/types";
+import {
+  DashboardState,
+  GeoLocation,
+  RouteData,
+  UserState,
+} from "@/stores/types";
 import BottomSection from "./CreateTrip/BottomSection";
 import { useAuth } from "@/stores/useAuth";
 import { OnGoingTrip } from "./OnGoingTrip/OnGoingTrip";
@@ -46,20 +51,16 @@ function hashStringToHsl(str: string) {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { users: otherUsers } = useOtherUsers();
-  const [routePath, setRoutePath] = useState<GeoLocation[]>([]);
-  const [dashboardState, setDashboardState] = useState<DashboardState>({
-    formIndex: 0,
-    toLocation: null,
-    fromLocation: null,
-    userLocation: null,
-    toLocationName: null,
-    fromLocationName: null,
-    maxRiders: 5,
-    visibility: "private",
-    tripName: null,
-  });
-
-  const { toLocation, fromLocation, userLocation } = dashboardState;
+  const [dashboardState, setDashboardState] = useState<Partial<DashboardState>>(
+    {
+      formIndex: 0,
+      fitTrigger: 0,
+      maxRiders: 5,
+      visibility: "private",
+    },
+  );
+  const { toLocation, fromLocation, fitTrigger, userLocation, routeData } =
+    dashboardState;
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -114,34 +115,40 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!fromLocation || !toLocation) {
-      setRoutePath([]);
+    if (!userLocation || !toLocation) {
+      setDashboardState((prev) => ({
+        ...prev,
+        routeData: null,
+      }));
       return;
     }
 
     const fetchRoute = async () => {
       try {
-        const res = await api.post("/route", {
-          origin: fromLocation,
+        const res = await api.post<RouteData>("/route", {
+          origin: userLocation,
           destination: toLocation,
         });
 
-        const data = await res.data;
+        const data = res.data;
 
         if (!data.polyline) return;
 
         const decoded = polyline.decode(data.polyline);
 
         const path = decoded.map(([lat, lng]) => ({ lat, lng }));
-
-        setRoutePath(path);
+        data.polyline = path;
+        setDashboardState((prev) => ({
+          ...prev,
+          routeData: data,
+        }));
       } catch (err) {
         console.error("Route fetch failed:", err);
       }
     };
 
     fetchRoute();
-  }, [fromLocation, toLocation]);
+  }, [userLocation, toLocation]);
 
   const updateDashboard = (updates: Partial<DashboardState>) =>
     setDashboardState((prev) => ({ ...prev, ...updates }));
@@ -165,7 +172,7 @@ export default function DashboardPage() {
             <CircleDot className="text-blue-800 w-8 h-8" />
           </AdvancedMarker>
         )}
-        {routePath.length > 0 && <RoutePolyline path={routePath} />}
+        {routeData && <RoutePolyline path={routeData.polyline} />}
 
         {Object.entries(otherUsers)
           .filter(
@@ -206,6 +213,7 @@ export default function DashboardPage() {
           }
           toLocation={toLocation}
           otherUsers={otherUsers}
+          trigger={fitTrigger}
         />
       </Map>
 
