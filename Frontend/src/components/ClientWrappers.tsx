@@ -2,9 +2,10 @@
 import { gqlClient } from "@/lib/graphql/client";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { ApolloProvider } from "@apollo/client/react";
+import { useSocket } from "@/stores/useSocket";
 import Announcer from "@/components/Announcer";
 import InstallPrompt from "./InstallPrompt";
-import { useSocket } from "@/stores/useSocket";
+import SendLocation from "@/components/SendLocation";
 
 export default function ClientWrappers({
   children,
@@ -21,6 +22,7 @@ export default function ClientWrappers({
       <ApolloProvider client={gqlClient}>
         <InstallPrompt />
         {inRoom && <Announcer />}
+        {inRoom && <SendLocation />}
         {children}
       </ApolloProvider>
     </APIProvider>

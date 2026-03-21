@@ -1,28 +1,18 @@
 import { RIDE } from "@/lib/graphql/query";
-import {
-  DashboardState,
-  RideState,
-} from "@/stores/types";
+import { RideState } from "@/stores/types";
 import { useAuth } from "@/stores/useAuth";
 import { useSocket } from "@/stores/useSocket";
 import { useOtherUsers } from "@/stores/useOtherUsers";
 import { useQuery } from "@apollo/client/react";
 import { useAnnouncerStore } from "@/stores/useAnnoucer";
 import { useCallback, useEffect } from "react";
+import { useDashboard } from "@/stores/useDashboard";
 
-export function useOnGoingTrip(
-  updateDashboard: (updates: Partial<DashboardState>) => void,
-  userLocation: DashboardState["userLocation"],
-) {
+export function useOnGoingTrip() {
   const { user } = useAuth();
-  const {
-    joinRide,
-    leaveRide,
-    sendSignal,
-    inRoom,
-    sendLocation,
-    onRideEnded,
-  } = useSocket();
+  const { userLocation, updateDashboard } = useDashboard();
+  const { joinRide, leaveRide, sendSignal, inRoom, sendLocation, onRideEnded } =
+    useSocket();
   const { data, loading, error } = useQuery<{ ride: RideState }>(RIDE, {
     variables: { rideCode: user.currentRide },
     fetchPolicy: "cache-and-network",
@@ -35,7 +25,6 @@ export function useOnGoingTrip(
     const rideCode = data.ride.rideCode;
     onRideEnded(() => {
       leaveRide({ rideCode });
-      updateDashboard({ fromLocation: null, toLocation: null });
     });
     return () => {
       onRideEnded(null);
@@ -64,35 +53,35 @@ export function useOnGoingTrip(
     }
   }, [data?.ride?.rideCode, inRoom]);
 
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      console.error("Geolocation is not supported by this browser.");
-      return;
-    }
+  // useEffect(() => {
+  //   if (!navigator.geolocation) {
+  //     console.error("Geolocation is not supported by this browser.");
+  //     return;
+  //   }
 
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        updateDashboard({
-          userLocation: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-        });
-      },
-      (err) => console.error("Geolocation error:", err),
-      { enableHighAccuracy: true },
-    );
+  //   const watchId = navigator.geolocation.watchPosition(
+  //     (pos) => {
+  //       updateDashboard({
+  //         userLocation: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+  //       });
+  //     },
+  //     (err) => console.error("Geolocation error:", err),
+  //     { enableHighAccuracy: true },
+  //   );
 
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
+  //   return () => navigator.geolocation.clearWatch(watchId);
+  // }, []);
 
-  const sendLocationSocketEvent = useCallback(() => {
-    if (userLocation && data?.ride?.rideCode) {
-      sendLocation({ rideCode: data.ride.rideCode, location: userLocation });
-    }
-  }, [userLocation, data?.ride?.rideCode, sendLocation]);
+  // const sendLocationSocketEvent = useCallback(() => {
+  //   if (userLocation && data?.ride?.rideCode) {
+  //     sendLocation({ rideCode: data.ride.rideCode, location: userLocation });
+  //   }
+  // }, [userLocation, data?.ride?.rideCode, sendLocation]);
 
-  useEffect(() => {
-    const intervalId = setInterval(sendLocationSocketEvent, 3000);
-    return () => clearInterval(intervalId);
-  }, [sendLocationSocketEvent]);
+  // useEffect(() => {
+  //   const intervalId = setInterval(sendLocationSocketEvent, 3000);
+  //   return () => clearInterval(intervalId);
+  // }, [sendLocationSocketEvent]);
 
   const handleSendSignal = (type: string) => {
     try {

@@ -1,11 +1,5 @@
-import { DashboardState, RouteData } from "@/stores/types";
+import { useDashboard } from "@/stores/useDashboard";
 import { useEffect, useState } from "react";
-
-interface TimerProps {
-  routeData: RouteData;
-  dashboardState: Partial<DashboardState>;
-  updateDashboard: (updates: Partial<DashboardState>) => void;
-}
 
 function getArrivalTime(durationStr: string): string {
   const seconds = parseInt(durationStr.replace("s", ""), 10);
@@ -28,11 +22,8 @@ function formatDistance(meters: number): string {
   return `${km.toFixed(1)} km`;
 }
 
-export default function Timer({
-  routeData,
-  updateDashboard,
-  dashboardState,
-}: TimerProps) {
+export default function Timer() {
+  const { routeData, fitTrigger, updateDashboard } = useDashboard();
   const [arrival, setArrival] = useState("");
   const [distance, setDistance] = useState("");
 
@@ -50,7 +41,7 @@ export default function Timer({
       <button
         onClick={() =>
           updateDashboard({
-            fitTrigger: (dashboardState.fitTrigger || 0) + 1,
+            fitTrigger: (fitTrigger || 0) + 1,
           })
         }
         className="flex items-center justify-center w-6 h-6 rounded-full bg-white text-black hover:scale-110 transition shadow-sm"

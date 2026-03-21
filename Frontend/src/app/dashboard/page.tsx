@@ -1,18 +1,14 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { AdvancedMarker, Map } from "@vis.gl/react-google-maps";
 import { FitBoundsHandler } from "@/components/FitBoundsHelper";
-import {
-  DashboardState,
-  GeoLocation,
-  RouteData,
-  UserState,
-} from "@/stores/types";
+import { RouteData, UserState } from "@/stores/types";
 import BottomSection from "./CreateTrip/BottomSection";
 import { useAuth } from "@/stores/useAuth";
 import { OnGoingTrip } from "./OnGoingTrip/OnGoingTrip";
 import { CircleDot, Loader } from "lucide-react";
 import { useOtherUsers } from "@/stores/useOtherUsers";
+import { useDashboard } from "@/stores/useDashboard";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import { gqlClient } from "@/lib/graphql/client";
 import { ME } from "@/lib/graphql/query";
@@ -51,16 +47,15 @@ function hashStringToHsl(str: string) {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { users: otherUsers } = useOtherUsers();
-  const [dashboardState, setDashboardState] = useState<Partial<DashboardState>>(
-    {
-      formIndex: 0,
-      fitTrigger: 0,
-      maxRiders: 5,
-      visibility: "private",
-    },
-  );
-  const { toLocation, fromLocation, fitTrigger, userLocation, routeData } =
-    dashboardState;
+
+  const {
+    toLocation,
+    fromLocation,
+    fitTrigger,
+    userLocation,
+    routeData,
+    updateDashboard,
+  } = useDashboard();
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -86,10 +81,9 @@ export default function DashboardPage() {
 
         lastLocation = next;
 
-        setDashboardState((prev) => ({
-          ...prev,
+        updateDashboard({
           userLocation: next,
-        }));
+        });
       },
       (err) => console.error("Geolocation error:", err),
       {
@@ -116,10 +110,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!userLocation || !toLocation) {
-      setDashboardState((prev) => ({
-        ...prev,
+      updateDashboard({
         routeData: null,
-      }));
+      });
       return;
     }
 
@@ -138,10 +131,9 @@ export default function DashboardPage() {
 
         const path = decoded.map(([lat, lng]) => ({ lat, lng }));
         data.polyline = path;
-        setDashboardState((prev) => ({
-          ...prev,
+        updateDashboard({
           routeData: data,
-        }));
+        });
       } catch (err) {
         console.error("Route fetch failed:", err);
       }
@@ -149,9 +141,6 @@ export default function DashboardPage() {
 
     fetchRoute();
   }, [userLocation, toLocation]);
-
-  const updateDashboard = (updates: Partial<DashboardState>) =>
-    setDashboardState((prev) => ({ ...prev, ...updates }));
 
   if (!userLocation) return <Loader className="animate-spin" />;
 
@@ -218,15 +207,9 @@ export default function DashboardPage() {
       </Map>
 
       {!!user?.currentRide ? (
-        <OnGoingTrip
-          updateDashboard={updateDashboard}
-          dashboardState={dashboardState}
-        />
+        <OnGoingTrip/>
       ) : (
-        <BottomSection
-          updateDashboard={updateDashboard}
-          dashboardState={dashboardState}
-        />
+        <BottomSection/>
       )}
     </div>
   );

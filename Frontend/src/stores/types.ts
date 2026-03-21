@@ -93,6 +93,7 @@ export interface DashboardState {
   visibility: "public" | "private";
   tripName: string | null;
   routeData: RouteData | null;
+  updateDashboard: (partial: Partial<DashboardState>) => void;
 }
 
 export interface UserState {

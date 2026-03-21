@@ -4,6 +4,7 @@ import { useAuth } from "./useAuth";
 import { useOtherUsers } from "./useOtherUsers";
 import { useAnnouncerStore } from "./useAnnoucer";
 import { getSocket, disconnectSocket } from "@/lib/socket";
+import { useDashboard } from "./useDashboard";
 
 export const useSocket = create<SocketState>((set) => {
   let rideEndedCb: any = null;
@@ -19,7 +20,10 @@ export const useSocket = create<SocketState>((set) => {
         break;
 
       case "sentSignal":
-        announcer.addAnnouncement(`${userName} : ${msg.data.signalType}`, "info");
+        announcer.addAnnouncement(
+          `${userName} : ${msg.data.signalType}`,
+          "info",
+        );
         break;
 
       case "userJoined":
@@ -72,6 +76,9 @@ export const useSocket = create<SocketState>((set) => {
       const { user, setUser } = useAuth.getState();
       setUser({ ...user!, currentRide: null });
       useOtherUsers.getState().clearUsersLocations();
+      useDashboard
+        .getState()
+        .updateDashboard({ fromLocation: null, toLocation: null });
     },
 
     endRide: (data) => {
