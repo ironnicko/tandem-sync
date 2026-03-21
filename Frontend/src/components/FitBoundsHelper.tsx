@@ -24,6 +24,7 @@ export function FitBoundsHandler({
   const map = useMap();
   const lastFitRef = useRef<string | null>(null);
   const lastTriggerRef = useRef<number | null>(null);
+  const lastOtherUsersRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!map) return;
@@ -45,9 +46,16 @@ export function FitBoundsHandler({
 
     // Create a hash to detect meaningful changes
     const hash = JSON.stringify(points.map((p) => [p.lat, p.lng]));
-    if (lastTriggerRef.current === trigger && hash === lastFitRef.current) return;
+    const otherUsersHash = JSON.stringify(Object.keys(otherUsers).sort());
+    if (
+      lastTriggerRef.current === trigger &&
+      hash === lastFitRef.current &&
+      otherUsersHash === lastOtherUsersRef.current
+    )
+      return;
     lastFitRef.current = hash;
     lastTriggerRef.current = trigger;
+    lastOtherUsersRef.current = otherUsersHash;
 
     points.forEach((p) => {
       if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) {
@@ -67,7 +75,7 @@ export function FitBoundsHandler({
       left: 120,
       right: 120,
     });
-  }, [fromLocation, toLocation, otherUsers, trigger]);
+  }, [fromLocation, otherUsers, trigger]);
 
   return null;
 }
