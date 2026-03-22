@@ -75,7 +75,7 @@ export function FitBoundsHandler({
       left: 120,
       right: 120,
     });
-  }, [fromLocation, otherUsers, trigger]);
+  }, [otherUsers, trigger]);
 
   return null;
 }
