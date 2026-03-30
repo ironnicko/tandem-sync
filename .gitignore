@@ -19,7 +19,7 @@ node_modules
 tmux.sh
 
 .zed
-
+.claude
 
 # Local .terraform directories
 .terraform/

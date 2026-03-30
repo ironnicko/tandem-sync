@@ -2,16 +2,16 @@
 
 import webpush from "web-push";
 
-webpush.setVapidDetails(
-  `mailto:${process.env.MY_EMAIL}`,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY,
-);
 
 export async function sendNotification(
   subscription: PushSubscription,
   message: string,
 ) {
+  webpush.setVapidDetails(
+    `mailto:${process.env.MY_EMAIL}`,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY,
+  );
   if (!subscription) {
     throw new Error("No subscription available");
   }

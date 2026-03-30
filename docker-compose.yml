@@ -1,111 +1,90 @@
 services:
-    traefik:
-        image: traefik:latest
-        restart: unless-stopped
-        network_mode: host
-        command:
-            - --api.dashboard=true
-            - --api.insecure=false
-            - --log.level=INFO
-            - --providers.docker=true
-            - --providers.docker.exposedbydefault=false
-            - --entrypoints.web.address=:80
-            - --entrypoints.websecure.address=:443
-            - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
-            - --certificatesresolvers.letsencrypt.acme.email=${MY_EMAIL}
-            - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-            - --entrypoints.web.http.redirections.entrypoint.to=websecure
-            - --entrypoints.web.http.redirections.entrypoint.scheme=https
-        volumes:
-            - traefik-letsencrypt:/letsencrypt
-            - /var/run/docker.sock:/var/run/docker.sock:ro
+  frontend:
+    image: ghcr.io/ironnicko/tandemsync/frontend:latest
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.frontend.rule=Host(`${TRAEFIK_HOST}`)
+      - traefik.http.routers.frontend.entrypoints=websecure
+      - traefik.http.routers.frontend.tls.certresolver=letsencrypt
+      - traefik.http.services.frontend.loadbalancer.server.port=3000
+    env_file:
+      - ./.env
 
-    frontend:
-        image: ironnicko1413/tandem-sync-frontend:latest
-        build:
-            context: ./Frontend
-            dockerfile: Dockerfile
-        restart: always
-        ports:
-            - "3000"
-        labels:
-            - traefik.enable=true
-            - traefik.http.routers.frontend.rule=Host(`${TRAEFIK_HOST}`)
-            - traefik.http.routers.frontend.entrypoints=websecure
-            - traefik.http.routers.frontend.tls.certresolver=letsencrypt
-            - traefik.http.services.frontend.loadbalancer.server.port=3000
-        env_file:
-            - ./.env
+  backend:
+    image: ghcr.io/ironnicko/tandemsync/backend:latest
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8000"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.backend.rule=Host(`${TRAEFIK_HOST}`) && PathPrefix(`/api/v1`)
+      - traefik.http.routers.backend.entrypoints=websecure
+      - traefik.http.routers.backend.tls.certresolver=letsencrypt
+      - traefik.http.services.backend.loadbalancer.server.port=8000
+    env_file:
+      - ./.env
 
-    backend:
-        image: ironnicko1413/tandem-sync-backend:latest
-        build:
-            context: ./Backend
-            dockerfile: Dockerfile
-        restart: always
-        ports:
-            - "8000"
-        labels:
-            - traefik.enable=true
-            - traefik.http.routers.backend.rule=Host(`${TRAEFIK_HOST}`) && PathPrefix(`/api/v1`)
-            - traefik.http.routers.backend.entrypoints=websecure
-            - traefik.http.routers.backend.tls.certresolver=letsencrypt
-            - traefik.http.services.backend.loadbalancer.server.port=8000
-        env_file:
-            - ./.env
+  authserver:
+    image: ghcr.io/ironnicko/tandemsync/authserver:latest
+    build:
+      context: ./AuthServer
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8001"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.authserver.rule=Host(`${TRAEFIK_HOST}`) && PathPrefix(`/api/auth`)
+      - traefik.http.routers.authserver.entrypoints=websecure
+      - traefik.http.routers.authserver.tls.certresolver=letsencrypt
+      - traefik.http.services.authserver.loadbalancer.server.port=8001
+    env_file:
+      - ./.env
 
-    authserver:
-        image: ironnicko1413/tandem-sync-authserver:latest
-        build:
-            context: ./AuthServer
-            dockerfile: Dockerfile
-        restart: always
-        ports:
-            - "8001"
-        labels:
-            - traefik.enable=true
-            - traefik.http.routers.authserver.rule=Host(`${TRAEFIK_HOST}`) && PathPrefix(`/api/auth`)
-            - traefik.http.routers.authserver.entrypoints=websecure
-            - traefik.http.routers.authserver.tls.certresolver=letsencrypt
-            - traefik.http.services.authserver.loadbalancer.server.port=8001
-        env_file:
-            - ./.env
+  socket:
+    image: ghcr.io/ironnicko/tandemsync/socket:latest
+    build:
+      context: ./SocketServer
+      dockerfile: Dockerfile
+    restart: always
+    expose:
+      - "3001"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.socket.rule=Host(`${TRAEFIK_HOST}`) && PathPrefix(`/wss`)
+      - traefik.http.routers.socket.entrypoints=websecure
+      - traefik.http.routers.socket.tls.certresolver=letsencrypt
+      - traefik.http.services.socket.loadbalancer.server.port=3001
+    env_file:
+      - ./.env
+    depends_on:
+      - dragonfly
 
-    socket:
-        image: ironnicko1413/tandem-sync-socket:latest
-        build:
-            context: ./SocketServer
-            dockerfile: Dockerfile
-        restart: always
-        expose:
-            - "3001"
-        labels:
-            - traefik.enable=true
-            - traefik.http.routers.socket.rule=Host(`${TRAEFIK_HOST}`) && PathPrefix(`/wss`)
-            - traefik.http.routers.socket.entrypoints=websecure
-            - traefik.http.routers.socket.tls.certresolver=letsencrypt
-            - traefik.http.services.socket.loadbalancer.server.port=3001
-        env_file:
-            - ./.env
-        depends_on:
-            - dragonfly
+  dragonfly:
+    image: "docker.dragonflydb.io/dragonflydb/dragonfly"
+    ulimits:
+      memlock: -1
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./dragonfly_data:/data
 
-    dragonfly:
-        image: "docker.dragonflydb.io/dragonflydb/dragonfly"
-        ulimits:
-            memlock: -1
-        ports:
-            - "6379:6379"
-        volumes:
-            - ./dragonfly_data:/data
-
-    redisinsight:
-        image: redis/redisinsight
-        ports:
-            - "5540:5540"
-        volumes:
-            - ./redisinsight_data:/db
-        depends_on:
-            - dragonfly
+  redisinsight:
+    image: redis/redisinsight
+    ports:
+      - "5540:5540"
+    volumes:
+      - ./redisinsight_data:/db
+    depends_on:
+      - dragonfly
 volumes:
-    traefik-letsencrypt:
+  traefik-letsencrypt:

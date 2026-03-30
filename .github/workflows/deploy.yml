@@ -1,25 +1,78 @@
 name: Deploy to VPS
-
 on:
   push:
     branches:
       - main
 
+env:
+  REGISTRY: ghcr.io
+  REPO: ironnicko/tandemsync
+
 jobs:
-  deploy:
+  build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-          script: |
-            cd /docker/tandem-sync
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            git pull origin main
-            docker compose up -d --build
-            docker image prune -af
+      - name: Build & push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Frontend
+          file: ./Frontend/Dockerfile
+          push: true
+          tags: ghcr.io/${{ env.REPO }}/frontend:latest
+          build-args: | 
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+            NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_SOCKET_URL=${{ secrets.NEXT_PUBLIC_SOCKET_URL }}
+            NEXT_PUBLIC_BETTER_AUTH_URL=${{ secrets.NEXT_PUBLIC_BETTER_AUTH_URL }}
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+            NEXT_PUBLIC_GOOGLE_MAP_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_MAP_ID }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Build & push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Backend
+          file: ./Backend/Dockerfile
+          push: true
+          tags: ghcr.io/${{ env.REPO }}/backend:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build & push authserver
+        uses: docker/build-push-action@v5
+        with:
+          context: ./AuthServer
+          file: ./AuthServer/Dockerfile
+          push: true
+          tags: ghcr.io/${{ env.REPO }}/authserver:latest
+          cache-from: type=gha,scope=authserver
+          cache-to: type=gha,mode=max,scope=authserver
+
+      - name: Build & push socket
+        uses: docker/build-push-action@v5
+        with:
+          context: ./SocketServer
+          file: ./SocketServer/Dockerfile
+          push: true
+          tags: ghcr.io/${{ env.REPO }}/socket:latest
+          cache-from: type=gha,scope=socket
+          cache-to: type=gha,mode=max,scope=socket
