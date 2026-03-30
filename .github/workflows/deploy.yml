@@ -76,3 +76,8 @@ jobs:
           tags: ghcr.io/${{ env.REPO }}/socket:latest
           cache-from: type=gha,scope=socket
           cache-to: type=gha,mode=max,scope=socket
+
+      - name: Trigger VPS deploy
+        run: |
+          curl -X POST http://${{ secrets.VPS_HOST }}:9000/hooks/deploy \
+            -H "X-Webhook-Secret: ${{ secrets.WEBHOOK_SECRET }}"
