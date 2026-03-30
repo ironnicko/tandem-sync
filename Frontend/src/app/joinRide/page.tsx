@@ -8,6 +8,7 @@ import { JOIN_RIDE } from "@/lib/graphql/mutation";
 import { RideState } from "@/stores/types";
 import { useAuth } from "@/stores/useAuth";
 import { useOtherUsers } from "@/stores/useOtherUsers";
+import { ArrowLeft, Bike, ShieldAlert } from "lucide-react";
 
 export default function JoinRidePage() {
   const params = useSearchParams();
@@ -71,7 +72,33 @@ export default function JoinRidePage() {
     return <p className="text-center mt-10">Loading ride details...</p>;
   if (error)
     return (
-      <p className="text-center mt-10 text-red-500">Error: {error.message}</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-6">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center flex flex-col items-center gap-6">
+          <div className="relative">
+            <Bike className="w-16 h-16 text-gray-300" />
+            <div className="absolute -top-1 -right-1 bg-white rounded-full p-1 border-2 border-red-50">
+              <ShieldAlert className="w-6 h-6 text-red-500" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-gray-900">Ride Not Found</h2>
+            <p className="text-gray-500 text-sm leading-relaxed">
+              {error.message.includes("not found")
+                ? "This ride link has expired or doesn't exist anymore."
+                : error.message}
+            </p>
+          </div>
+
+          <button
+            onClick={() => router.back()}
+            className="flex items-center cursor-pointer gap-2 text-sm font-semibold text-gray-600 hover:text-black transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Go Back
+          </button>
+        </div>
+      </div>
     );
 
   const ride = data?.ride;
@@ -107,13 +134,12 @@ export default function JoinRidePage() {
         <button
           onClick={handleJoin}
           disabled={joining}
-          className={`mt-6 w-full cursor-pointer px-6 py-3 rounded-lg text-white font-medium transition-colors ${
-            joined
+          className={`mt-6 w-full cursor-pointer px-6 py-3 rounded-lg text-white font-medium transition-colors ${joined
               ? "bg-black cursor-pointer"
               : joining
                 ? "bg-gray-500 cursor-wait"
                 : "bg-black hover:bg-gray-800"
-          }`}
+            }`}
         >
           {joined ? "Joined" : joining ? "Joining..." : "Join Ride"}
         </button>

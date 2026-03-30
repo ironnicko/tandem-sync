@@ -21,7 +21,7 @@ export default function JoinRideModal({ onClose, onJoin }: Props) {
         <input
           value={rideCode}
           onChange={(e) => setRideCode(e.target.value)}
-          placeholder="Enter ride code"
+          placeholder="Ride Code or Invite Link"
           className="w-full border rounded-md px-3 py-2 mb-4"
         />
 
@@ -31,7 +31,29 @@ export default function JoinRideModal({ onClose, onJoin }: Props) {
           </button>
 
           <button
-            onClick={() => onJoin(rideCode)}
+            onClick={() => {
+              let input = rideCode.trim();
+              let code = input;
+              
+              try {
+                // If it's a URL, extract all query parameters
+                if (input.startsWith("http")) {
+                  const url = new URL(input);
+                  const searchParams = new URLSearchParams(url.search);
+                  const mainCode = searchParams.get("rideCode");
+                  
+                  if (mainCode) {
+                    searchParams.delete("rideCode");
+                    const otherParams = searchParams.toString();
+                    code = otherParams ? `${mainCode}&${otherParams}` : mainCode;
+                  }
+                }
+              } catch (e) {
+                // Fail-safe: fallback to original input if URL parsing fails
+              }
+              
+              onJoin(code);
+            }}
             className="px-3 py-2 rounded cursor-pointer bg-black text-white"
           >
             Next
