@@ -23,7 +23,7 @@ self.addEventListener("push", async function (event) {
   // Otherwise, show notification
   const options = {
     body: data.body,
-    icon: data.icon || "/icon.png",
+    icon: data.icon || "/logo.svg",
     badge: "/badge.png",
     vibrate: [100, 50, 100],
     data: {
