@@ -14,12 +14,9 @@ export default function SignUp() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
-  let redirectUrl: string;
   const searchParams = useSearchParams();
   const router = useRouter();
-  if (searchParams.get("redirect"))
-    redirectUrl = encodeURIComponent(searchParams.get("redirect"));
-  else redirectUrl = "/dashboard";
+  const redirectUrl = searchParams.get("redirect") || "/dashboard";
 
   const { signup } = useAuth();
 
@@ -127,7 +124,10 @@ export default function SignUp() {
 
       <p className="text-center text-sm text-gray-500 mt-4">
         Already have an account?{" "}
-        <a href="/signin" className="text-blue-600 hover:underline">
+        <a 
+          href={`/signin?redirect=${encodeURIComponent(redirectUrl)}`} 
+          className="text-blue-600 hover:underline"
+        >
           Sign in
         </a>
       </p>

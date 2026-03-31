@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@apollo/client": "^4.0.7",
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.14",
     "@types/node": "^20.19.21",
     "@types/react": "^19.2.2",

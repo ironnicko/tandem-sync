@@ -16,7 +16,7 @@ export default function SignIn() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const redirectUrl = encodeURIComponent(searchParams.get("redirect")) || "/dashboard";
+  const redirectUrl = searchParams.get("redirect") || "/dashboard";
 
   const { login } = useAuth();
 
@@ -26,7 +26,6 @@ export default function SignIn() {
     try {
       const isLoggedIn = await login(email, password);
       if (isLoggedIn == true) {
-        console.log(redirectUrl);
         router.replace(redirectUrl);
       }
     } catch (err) {
@@ -90,7 +89,7 @@ export default function SignIn() {
       <p className="text-center text-sm text-gray-500 mt-4">
         Don’t have an account?{" "}
         <a
-          href={`/signup?redirect=${redirectUrl}`}
+          href={`/signup?redirect=${encodeURIComponent(redirectUrl)}`}
           className="text-blue-600 hover:underline"
         >
           Sign up
