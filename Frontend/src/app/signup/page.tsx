@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import { FormEvent, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -14,29 +14,35 @@ export default function SignUp() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
-
+  let redirectUrl: string;
   const searchParams = useSearchParams();
   const router = useRouter();
+  if (searchParams.get("redirect"))
+    redirectUrl = encodeURIComponent(searchParams.get("redirect"));
+  else redirectUrl = "/dashboard";
 
-  const redirectUrl = encodeURIComponent(searchParams.get("redirect") || "/dashboard");
-
-  const {signup} = useAuth()
+  const { signup } = useAuth();
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
-      const isLoggedIn = await signup(name, email, password)
-      if (isLoggedIn == true){
-        router.replace(redirectUrl)
+      const isLoggedIn = await signup(name, email, password);
+      if (isLoggedIn == true) {
+        debugger;
+        router.replace(redirectUrl);
       }
-    } catch(err){
-      console.error(err)
-      toast.error("Failed to Sign Up")
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to Sign Up");
     }
-  }
+  };
 
   const isSignUpDisabled =
-    !name || !email || !password || !confirmPassword || password !== confirmPassword;
+    !name ||
+    !email ||
+    !password ||
+    !confirmPassword ||
+    password !== confirmPassword;
 
   return (
     <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
@@ -97,7 +103,9 @@ export default function SignUp() {
               className="mt-1 w-full"
             />
             {confirmPassword && password !== confirmPassword && (
-              <p className="text-sm text-red-500 mt-1">Passwords do not match</p>
+              <p className="text-sm text-red-500 mt-1">
+                Passwords do not match
+              </p>
             )}
           </div>
         </div>

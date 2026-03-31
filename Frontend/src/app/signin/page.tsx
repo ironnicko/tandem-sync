@@ -16,9 +16,7 @@ export default function SignIn() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const redirectUrl = encodeURIComponent(
-    searchParams.get("redirect") || "/dashboard",
-  );
+  const redirectUrl = encodeURIComponent(searchParams.get("redirect")) || "/dashboard";
 
   const { login } = useAuth();
 
