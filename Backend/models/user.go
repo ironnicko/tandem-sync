@@ -19,8 +19,8 @@ type PushSubscriptionKeys struct {
 type DBUsers struct {
 	ID               primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	IsActive         bool               `bson:"isActive" json:"isActive"`
-	CurrentRide      *string            `bson:"currentRide,omitempty" json:"currentRide,omitempty"`
-	PushSubscription *PushSubscription  `bson:"pushSubscription,omitempty" json:"pushSubscription,omitempty"`
+	CurrentRide       *string             `bson:"currentRide,omitempty" json:"currentRide,omitempty"`
+	PushSubscriptions []*PushSubscription `bson:"pushSubscriptions,omitempty" json:"pushSubscriptions,omitempty"`
 }
 
 type BetterAuthUser struct {
@@ -47,9 +47,9 @@ type User struct {
 	CreatedAt     time.Time          `json:"createdAt" bson:"createdAt"`
 	UpdatedAt     time.Time          `json:"updatedAt" bson:"updatedAt"`
 	// from DBUser
-	IsActive         bool              `json:"isActive" bson:"isActive"`
-	CurrentRide      *string            `json:"currentRide,omitempty" bson:"currentRide,omitempty"`
-	PushSubscription *PushSubscription `json:"pushSubscription,omitempty" bson:"pushSubscription,omitempty"`
+	IsActive          bool                `json:"isActive" bson:"isActive"`
+	CurrentRide       *string             `json:"currentRide,omitempty" json:"currentRide,omitempty"`
+	PushSubscriptions []*PushSubscription `json:"pushSubscriptions,omitempty" bson:"pushSubscriptions,omitempty"`
 }
 
 func MergeUser(auth *BetterAuthUser, db *DBUsers) *User {
@@ -60,15 +60,15 @@ func MergeUser(auth *BetterAuthUser, db *DBUsers) *User {
 	}
 
 	return &User{
-		ID:               auth.ID,
-		Name:             auth.Name,
-		Email:            auth.Email,
-		EmailVerified:    auth.EmailVerified,
-		Image:            auth.Image,
-		CreatedAt:        auth.CreatedAt,
-		UpdatedAt:        auth.UpdatedAt,
-		IsActive:         db.IsActive,
-		CurrentRide:      &currentRide,
-		PushSubscription: db.PushSubscription,
+		ID:                auth.ID,
+		Name:              auth.Name,
+		Email:             auth.Email,
+		EmailVerified:     auth.EmailVerified,
+		Image:             auth.Image,
+		CreatedAt:         auth.CreatedAt,
+		UpdatedAt:         auth.UpdatedAt,
+		IsActive:          db.IsActive,
+		CurrentRide:       &currentRide,
+		PushSubscriptions: db.PushSubscriptions,
 	}
 }

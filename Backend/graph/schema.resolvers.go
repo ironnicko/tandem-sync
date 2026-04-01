@@ -179,13 +179,15 @@ func (r *mutationResolver) UpdateRide(ctx context.Context, rideCode string, requ
 			// Send notifications asynchronously
 			go func(users []models.DBUsers) {
 				for _, user := range users {
-					if user.PushSubscription != nil {
-						utils.SendNotification(
-							user.PushSubscription,
-							"Ride Started...",
-							ride.TripName+" is starting now.",
-							"./icon.png",
-						)
+					for _, sub := range user.PushSubscriptions {
+						if sub != nil {
+							utils.SendNotification(
+								sub,
+								"Ride Started...",
+								ride.TripName+" is starting now.",
+								"./icon.png",
+							)
+						}
 					}
 				}
 			}(*users)
@@ -215,13 +217,15 @@ func (r *mutationResolver) UpdateRide(ctx context.Context, rideCode string, requ
 
 			go func(users []models.DBUsers) {
 				for _, user := range users {
-					if user.PushSubscription != nil {
-						utils.SendNotification(
-							user.PushSubscription,
-							"Ride Ended...",
-							ride.TripName+" has ended.",
-							"./icon.png",
-						)
+					for _, sub := range user.PushSubscriptions {
+						if sub != nil {
+							utils.SendNotification(
+								sub,
+								"Ride Ended...",
+								ride.TripName+" has ended.",
+								"./icon.png",
+							)
+						}
 					}
 				}
 			}(*users)
@@ -254,8 +258,6 @@ func (r *mutationResolver) SetUserPushNotification(ctx context.Context, input mo
 		return nil, fmt.Errorf("invalid userId: %w", err)
 	}
 
-	update := bson.M{}
-
 	if input.PushSubscription != nil {
 		ps := input.PushSubscription
 		psUpdate := bson.M{
@@ -265,19 +267,31 @@ func (r *mutationResolver) SetUserPushNotification(ctx context.Context, input mo
 				"auth":   ps.Keys.Auth,
 			},
 		}
-		update["pushSubscription"] = psUpdate
-	}
-	if input.ClearSubscription != nil {
-		update["pushSubscription"] = nil
+
+		// Remove existing subscription with same endpoint to avoid duplicates
+		_, _ = usersColl.UpdateOne(ctx,
+			bson.M{"_id": userID},
+			bson.M{"$pull": bson.M{"pushSubscriptions": bson.M{"endpoint": ps.Endpoint}}},
+		)
+
+		// Add new subscription
+		_, err = usersColl.UpdateOne(ctx,
+			bson.M{"_id": userID},
+			bson.M{"$push": bson.M{"pushSubscriptions": psUpdate}},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update user: %w", err)
+		}
 	}
 
-	if len(update) == 0 {
-		return nil, fmt.Errorf("no fields to update")
-	}
-
-	_, err = usersColl.UpdateOne(ctx, bson.M{"_id": userID}, bson.M{"$set": update})
-	if err != nil {
-		return nil, fmt.Errorf("failed to update user: %w", err)
+	if input.ClearSubscription != nil && *input.ClearSubscription {
+		_, err = usersColl.UpdateOne(ctx,
+			bson.M{"_id": userID},
+			bson.M{"$set": bson.M{"pushSubscriptions": []interface{}{}}},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to clear subscriptions: %w", err)
+		}
 	}
 
 	var user models.DBUsers

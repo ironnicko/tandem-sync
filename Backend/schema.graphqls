@@ -36,7 +36,7 @@ type User {
   # from DBUser
   isActive: Boolean!
   currentRide: String
-  pushSubscription: PushSubscription
+  pushSubscriptions: [PushSubscription]
 }
 
 type BetterAuthUser {
@@ -54,7 +54,7 @@ type DBUser {
   id: ID!
   isActive: Boolean!
   currentRide: String
-  pushSubscription: PushSubscription
+  pushSubscriptions: [PushSubscription]
 }
 
 type BetterAuthAccount {

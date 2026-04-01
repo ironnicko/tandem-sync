@@ -80,10 +80,10 @@ type ComplexityRoot struct {
 	}
 
 	DBUser struct {
-		CurrentRide      func(childComplexity int) int
-		ID               func(childComplexity int) int
-		IsActive         func(childComplexity int) int
-		PushSubscription func(childComplexity int) int
+		CurrentRide       func(childComplexity int) int
+		ID                func(childComplexity int) int
+		IsActive          func(childComplexity int) int
+		PushSubscriptions func(childComplexity int) int
 	}
 
 	GeoLocation struct {
@@ -155,16 +155,16 @@ type ComplexityRoot struct {
 	}
 
 	User struct {
-		CreatedAt        func(childComplexity int) int
-		CurrentRide      func(childComplexity int) int
-		Email            func(childComplexity int) int
-		EmailVerified    func(childComplexity int) int
-		ID               func(childComplexity int) int
-		Image            func(childComplexity int) int
-		IsActive         func(childComplexity int) int
-		Name             func(childComplexity int) int
-		PushSubscription func(childComplexity int) int
-		UpdatedAt        func(childComplexity int) int
+		CreatedAt         func(childComplexity int) int
+		CurrentRide       func(childComplexity int) int
+		Email             func(childComplexity int) int
+		EmailVerified     func(childComplexity int) int
+		ID                func(childComplexity int) int
+		Image             func(childComplexity int) int
+		IsActive          func(childComplexity int) int
+		Name              func(childComplexity int) int
+		PushSubscriptions func(childComplexity int) int
+		UpdatedAt         func(childComplexity int) int
 	}
 }
 
@@ -420,12 +420,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.DBUser.IsActive(childComplexity), true
-	case "DBUser.pushSubscription":
-		if e.ComplexityRoot.DBUser.PushSubscription == nil {
+	case "DBUser.pushSubscriptions":
+		if e.ComplexityRoot.DBUser.PushSubscriptions == nil {
 			break
 		}
 
-		return e.ComplexityRoot.DBUser.PushSubscription(childComplexity), true
+		return e.ComplexityRoot.DBUser.PushSubscriptions(childComplexity), true
 
 	case "GeoLocation.lat":
 		if e.ComplexityRoot.GeoLocation.Lat == nil {
@@ -770,12 +770,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.User.Name(childComplexity), true
-	case "User.pushSubscription":
-		if e.ComplexityRoot.User.PushSubscription == nil {
+	case "User.pushSubscriptions":
+		if e.ComplexityRoot.User.PushSubscriptions == nil {
 			break
 		}
 
-		return e.ComplexityRoot.User.PushSubscription(childComplexity), true
+		return e.ComplexityRoot.User.PushSubscriptions(childComplexity), true
 	case "User.updatedAt":
 		if e.ComplexityRoot.User.UpdatedAt == nil {
 			break
@@ -907,7 +907,7 @@ type User {
   # from DBUser
   isActive: Boolean!
   currentRide: String
-  pushSubscription: PushSubscription
+  pushSubscriptions: [PushSubscription]
 }
 
 type BetterAuthUser {
@@ -925,7 +925,7 @@ type DBUser {
   id: ID!
   isActive: Boolean!
   currentRide: String
-  pushSubscription: PushSubscription
+  pushSubscriptions: [PushSubscription]
 }
 
 type BetterAuthAccount {
@@ -2164,23 +2164,23 @@ func (ec *executionContext) fieldContext_DBUser_currentRide(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _DBUser_pushSubscription(ctx context.Context, field graphql.CollectedField, obj *models.DBUsers) (ret graphql.Marshaler) {
+func (ec *executionContext) _DBUser_pushSubscriptions(ctx context.Context, field graphql.CollectedField, obj *models.DBUsers) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_DBUser_pushSubscription,
+		ec.fieldContext_DBUser_pushSubscriptions,
 		func(ctx context.Context) (any, error) {
-			return obj.PushSubscription, nil
+			return obj.PushSubscriptions, nil
 		},
 		nil,
-		ec.marshalOPushSubscription2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐPushSubscription,
+		ec.marshalOPushSubscription2ᚕᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐPushSubscription,
 		true,
 		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_DBUser_pushSubscription(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DBUser_pushSubscriptions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "DBUser",
 		Field:      field,
@@ -2430,8 +2430,8 @@ func (ec *executionContext) fieldContext_Mutation_setUserPushNotification(ctx co
 				return ec.fieldContext_DBUser_isActive(ctx, field)
 			case "currentRide":
 				return ec.fieldContext_DBUser_currentRide(ctx, field)
-			case "pushSubscription":
-				return ec.fieldContext_DBUser_pushSubscription(ctx, field)
+			case "pushSubscriptions":
+				return ec.fieldContext_DBUser_pushSubscriptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type DBUser", field.Name)
 		},
@@ -2813,8 +2813,8 @@ func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graph
 				return ec.fieldContext_User_isActive(ctx, field)
 			case "currentRide":
 				return ec.fieldContext_User_currentRide(ctx, field)
-			case "pushSubscription":
-				return ec.fieldContext_User_pushSubscription(ctx, field)
+			case "pushSubscriptions":
+				return ec.fieldContext_User_pushSubscriptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -2995,8 +2995,8 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_isActive(ctx, field)
 			case "currentRide":
 				return ec.fieldContext_User_currentRide(ctx, field)
-			case "pushSubscription":
-				return ec.fieldContext_User_pushSubscription(ctx, field)
+			case "pushSubscriptions":
+				return ec.fieldContext_User_pushSubscriptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -3058,8 +3058,8 @@ func (ec *executionContext) fieldContext_Query_usersByIds(ctx context.Context, f
 				return ec.fieldContext_User_isActive(ctx, field)
 			case "currentRide":
 				return ec.fieldContext_User_currentRide(ctx, field)
-			case "pushSubscription":
-				return ec.fieldContext_User_pushSubscription(ctx, field)
+			case "pushSubscriptions":
+				return ec.fieldContext_User_pushSubscriptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -4117,23 +4117,23 @@ func (ec *executionContext) fieldContext_User_currentRide(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _User_pushSubscription(ctx context.Context, field graphql.CollectedField, obj *models.User) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_pushSubscriptions(ctx context.Context, field graphql.CollectedField, obj *models.User) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_User_pushSubscription,
+		ec.fieldContext_User_pushSubscriptions,
 		func(ctx context.Context) (any, error) {
-			return obj.PushSubscription, nil
+			return obj.PushSubscriptions, nil
 		},
 		nil,
-		ec.marshalOPushSubscription2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐPushSubscription,
+		ec.marshalOPushSubscription2ᚕᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐPushSubscription,
 		true,
 		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_User_pushSubscription(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_User_pushSubscriptions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
@@ -6298,8 +6298,8 @@ func (ec *executionContext) _DBUser(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "currentRide":
 			out.Values[i] = ec._DBUser_currentRide(ctx, field, obj)
-		case "pushSubscription":
-			out.Values[i] = ec._DBUser_pushSubscription(ctx, field, obj)
+		case "pushSubscriptions":
+			out.Values[i] = ec._DBUser_pushSubscriptions(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -7242,8 +7242,8 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "currentRide":
 			out.Values[i] = ec._User_currentRide(ctx, field, obj)
-		case "pushSubscription":
-			out.Values[i] = ec._User_pushSubscription(ctx, field, obj)
+		case "pushSubscriptions":
+			out.Values[i] = ec._User_pushSubscriptions(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -8039,6 +8039,19 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	_ = ctx
 	res := graphql.MarshalInt(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOPushSubscription2ᚕᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐPushSubscription(ctx context.Context, sel ast.SelectionSet, v []*models.PushSubscription) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalOPushSubscription2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐPushSubscription(ctx, sel, v[i])
+	})
+
+	return ret
 }
 
 func (ec *executionContext) marshalOPushSubscription2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐPushSubscription(ctx context.Context, sel ast.SelectionSet, v *models.PushSubscription) graphql.Marshaler {

@@ -22,16 +22,22 @@ export default function PushNotificationManager() {
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [isSupported, setIsSupported] = useState(false);
+  const [localSubscription, setLocalSubscription] = useState<PushSubscription | null>(null);
   const { subscribeUser, unsubscribeUser } = useUserSubscription();
-
-  const subscription = user?.pushSubscription ?? null;
 
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       setIsSupported(true);
       registerServiceWorker();
+      checkSubscription();
     }
   }, []);
+
+  async function checkSubscription() {
+    const registration = await navigator.serviceWorker.ready;
+    const sub = await registration.pushManager.getSubscription();
+    setLocalSubscription(sub);
+  }
 
   async function registerServiceWorker() {
     await navigator.serviceWorker.register("/sw.js", {
@@ -51,6 +57,7 @@ export default function PushNotificationManager() {
 
     const serializedSub = JSON.parse(JSON.stringify(sub));
     await subscribeUser(serializedSub);
+    setLocalSubscription(sub);
   }
 
   async function unsubscribeFromPush() {
@@ -58,11 +65,13 @@ export default function PushNotificationManager() {
     const sub = await registration.pushManager.getSubscription();
 
     await Promise.allSettled([sub?.unsubscribe(), unsubscribeUser()]);
+    setLocalSubscription(null);
   }
 
   async function sendTestNotification() {
-    if (!subscription) return;
-    await sendNotification(subscription, message);
+    if (!localSubscription) return;
+    const serializedSub = JSON.parse(JSON.stringify(localSubscription));
+    await sendNotification(serializedSub, message);
     setMessage("");
   }
 
@@ -70,49 +79,56 @@ export default function PushNotificationManager() {
     return <p>Push notifications are not supported in this browser.</p>;
   }
 
-  if (!subscription)
+  if (!localSubscription)
     return (
-      <>
-        <p className="text-gray-600">
-          You are not subscribed to push notifications.
+      <div className="flex flex-col items-center gap-4">
+        <p className="text-gray-600 font-medium">
+          Enable notifications on this device to stay updated!
         </p>
 
         <button
           onClick={subscribeToPush}
-          className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg transition"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95"
         >
-          Subscribe
+          Subscribe Now
         </button>
-      </>
+      </div>
     );
 
-  // return (
-  //   <>
-  //     <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-  //       <button
-  //         onClick={unsubscribeFromPush}
-  //         className="bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded-lg transition"
-  //       >
-  //         Unsubscribe
-  //       </button>
+  return (
+    <div className="flex flex-col items-center gap-6 w-full max-w-sm">
+      <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-2xl p-4 w-full">
+        <p className="text-green-700 dark:text-green-400 text-sm font-bold flex items-center justify-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+          Notifications Active for this device
+        </p>
+      </div>
 
-  //       <button
-  //         onClick={sendTestNotification}
-  //         className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition"
-  //       >
-  //         Send Test
-  //       </button>
-  //     </div>
-
-  //     <div className="flex flex-col items-center gap-2 mt-4">
-  //       <input
-  //         type="text"
-  //         placeholder="Enter notification message"
-  //         value={message}
-  //         onChange={(e) => setMessage(e.target.value)}
-  //         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-  //       />
-  //     </div>
-  //   </>
-  // );
+      <div className="flex flex-col gap-3 w-full">
+        <input
+          type="text"
+          placeholder="Type a test message..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+        />
+        
+        <div className="grid grid-cols-2 gap-3 w-full">
+          <button
+            onClick={sendTestNotification}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-3 rounded-xl transition-all shadow-lg shadow-blue-500/20"
+          >
+            Send Test
+          </button>
+          
+          <button
+            onClick={unsubscribeFromPush}
+            className="bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 font-bold px-4 py-3 rounded-xl transition-all"
+          >
+            Unsubscribe
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
