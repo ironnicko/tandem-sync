@@ -131,7 +131,7 @@ export const JOIN_RIDE = gql`
 export const SET_USER_PUSH_NOTIFICATION = gql`
   mutation SetUserPushNotification($input: UpdateUserInput!) {
     setUserPushNotification(input: $input) {
-      pushSubscription {
+      pushSubscriptions {
         endpoint
         keys {
           p256dh

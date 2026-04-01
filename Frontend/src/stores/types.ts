@@ -107,7 +107,7 @@ export interface UserState {
   currentRide?: string | null;
   image?: string | null;
   location?: GeoLocation | null;
-  pushSubscription?: PushSubscription | null;
+  pushSubscriptions?: PushSubscription[] | null;
 }
 
 export interface SocketState {

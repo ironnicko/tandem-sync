@@ -94,41 +94,41 @@ export default function PushNotificationManager() {
         </button>
       </div>
     );
+  if (process.env.NEXT_PUBLIC_MODE === "dev")
+    return (
+      <div className="flex flex-col items-center gap-6 w-full max-w-sm">
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-2xl p-4 w-full">
+          <p className="text-green-700 dark:text-green-400 text-sm font-bold flex items-center justify-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+            Notifications Active for this device
+          </p>
+        </div>
 
-  return (
-    <div className="flex flex-col items-center gap-6 w-full max-w-sm">
-      <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-2xl p-4 w-full">
-        <p className="text-green-700 dark:text-green-400 text-sm font-bold flex items-center justify-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-          Notifications Active for this device
-        </p>
-      </div>
+        <div className="flex flex-col gap-3 w-full">
+          <input
+            type="text"
+            placeholder="Type a test message..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+          />
 
-      <div className="flex flex-col gap-3 w-full">
-        <input
-          type="text"
-          placeholder="Type a test message..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
-        />
-        
-        <div className="grid grid-cols-2 gap-3 w-full">
-          <button
-            onClick={sendTestNotification}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-3 rounded-xl transition-all shadow-lg shadow-blue-500/20"
-          >
-            Send Test
-          </button>
-          
-          <button
-            onClick={unsubscribeFromPush}
-            className="bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 font-bold px-4 py-3 rounded-xl transition-all"
-          >
-            Unsubscribe
-          </button>
+          <div className="grid grid-cols-2 gap-3 w-full">
+            <button
+              onClick={sendTestNotification}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-3 rounded-xl transition-all shadow-lg shadow-blue-500/20"
+            >
+              Send Test
+            </button>
+
+            <button
+              onClick={unsubscribeFromPush}
+              className="bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 font-bold px-4 py-3 rounded-xl transition-all"
+            >
+              Unsubscribe
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
 }

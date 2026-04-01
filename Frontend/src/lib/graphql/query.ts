@@ -89,9 +89,9 @@ export const ME = gql`
             isActive
             currentRide
             image
-            pushSubscription {
+            pushSubscriptions {
                 endpoint
-                keys{
+                keys {
                   p256dh
                   auth
                 }
