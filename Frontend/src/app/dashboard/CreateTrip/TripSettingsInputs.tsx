@@ -136,6 +136,7 @@ export const TripSettingsInputs = () => {
       <button
         onClick={CreateRide}
         disabled={buttonBoolean.current}
+        id="create-button"
         className="cursor-pointer mt-6 w-full bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800"
       >
         Create

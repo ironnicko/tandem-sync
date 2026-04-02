@@ -1,6 +1,6 @@
 "use client";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface PlaceAutocompleteProps {
   onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
@@ -20,6 +20,23 @@ export const PlaceAutocomplete = ({
     google.maps.places.AutocompleteSuggestion[]
   >([]);
   const places = useMapsLibrary("places");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setPredictions([]);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -61,12 +78,20 @@ export const PlaceAutocomplete = ({
       },
     );
   };
+  
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && predictions.length > 0) {
+      e.preventDefault();
+      handleSelect(predictions[0]);
+    }
+  };
 
   return (
-    <div className="autocomplete-container relative">
+    <div className="autocomplete-container relative" ref={containerRef}>
       <input
         value={inputValue}
         onChange={handleChange}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className={`${className} border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black w-full`}
       />

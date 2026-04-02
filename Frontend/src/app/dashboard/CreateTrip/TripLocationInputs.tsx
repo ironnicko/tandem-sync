@@ -80,6 +80,7 @@ export const TripLocationInputs = () => {
       <button
         disabled={!(fromLocation && toLocation && tripName)}
         onClick={() => updateDashboard({ formIndex: 1 })}
+        id="next-button"
         className={`mt-6 w-full px-6 py-3 rounded-lg
           ${
             fromLocation && toLocation

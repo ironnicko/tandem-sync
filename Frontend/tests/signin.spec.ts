@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Signin Flow', () => {
+  test.beforeEach(async ({ page }) => {
+    // Dismiss the PWA install prompt
+    await page.addInitScript(() => {
+      window.localStorage.setItem('install-prompt-dismissed', Date.now().toString());
+    });
+  });
+
   test('should login a user and redirect to dashboard', async ({ page }) => {
 
 
