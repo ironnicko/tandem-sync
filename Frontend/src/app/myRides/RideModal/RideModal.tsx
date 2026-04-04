@@ -97,10 +97,29 @@ export default function RideModal({ ride, onClose }: RideModalProps) {
     handleRideChange("ended", "end");
   };
   const handleSetCurrentRide = async () => {
-    setUser({ ...user!, currentRide: currentRide.rideCode });
-    await handleRideChange(null, "join");
-    joinRide({ rideCode: ride.rideCode });
-    router.push("/dashboard");
+    setButtonBusy(true);
+    try {
+      const updates: Partial<UpdateRideParams> = {
+        ...formState,
+        status: null,
+        requestType: "join",
+      };
+
+      await updateRide({
+        variables: { rideCode: currentRide.rideCode, ...updates },
+      });
+
+      setUser({ ...user!, currentRide: currentRide.rideCode });
+      joinRide({ rideCode: ride.rideCode });
+
+      // Unmount the modal to clear expensive UI layers before navigation
+      onClose();
+      router.push("/dashboard");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to set current ride");
+      setButtonBusy(false);
+    }
   };
   const handleRemoveCurrentRide = async () => {
     setUser({ ...user!, currentRide: null });

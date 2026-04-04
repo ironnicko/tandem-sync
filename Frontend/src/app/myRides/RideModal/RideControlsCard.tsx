@@ -37,7 +37,7 @@ export default function RideControlsCard({
   if (!leader && rideHasEnded) return null;
 
   return (
-    <div className="w-full max-w-2xl bg-white/80 backdrop-blur-md rounded-xl p-6 flex flex-wrap justify-center gap-10 shadow-lg border border-white/20">
+    <div className="w-full max-w-2xl bg-white/80 rounded-xl p-6 flex flex-wrap justify-center gap-10 shadow-lg border border-white/20">
       {leader && (
         <OwnerControls
           ride={ride}

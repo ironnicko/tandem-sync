@@ -1,4 +1,4 @@
-import { PlaceAutocomplete } from "@/components/PlaceAutoComplete";
+import { PlaceAutocomplete, PlaceDetails } from "@/components/PlaceAutoComplete";
 import { useDashboard } from "@/stores/useDashboard";
 
 export const TripLocationInputs = () => {
@@ -12,32 +12,32 @@ export const TripLocationInputs = () => {
   } = useDashboard();
 
   const handleFromPlaceChanged = (
-    place: google.maps.places.PlaceResult | null,
+    place: PlaceDetails | null,
   ) => {
-    if (place?.geometry?.location) {
+    if (place) {
       updateDashboard({
         fromLocation: {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
+          lat: place.lat,
+          lng: place.lng,
         },
+        fromLocationName: place.name
       });
-      updateDashboard({ fromLocationName: place.name!.toString() });
     } else {
       updateDashboard({ fromLocation: null, fromLocationName: null });
     }
   };
 
   const handleToPlaceChanged = (
-    place: google.maps.places.PlaceResult | null,
+    place: PlaceDetails | null,
   ) => {
-    if (place?.geometry?.location) {
+    if (place) {
       updateDashboard({
         toLocation: {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
+          lat: place.lat,
+          lng: place.lng,
         },
+        toLocationName: place.name
       });
-      updateDashboard({ toLocationName: place.name!.toString() });
     } else {
       updateDashboard({ toLocation: null, toLocationName: null });
     }
