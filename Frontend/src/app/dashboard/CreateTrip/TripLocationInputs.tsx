@@ -8,6 +8,7 @@ export const TripLocationInputs = () => {
     toLocation,
     toLocationName,
     tripName,
+    userLocation,
     updateDashboard,
   } = useDashboard();
 
@@ -64,6 +65,7 @@ export const TripLocationInputs = () => {
         <PlaceAutocomplete
           onPlaceSelect={handleFromPlaceChanged}
           defaultValue={fromLocationName}
+          userLocation={userLocation}
           placeholder="Start..."
           className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
         />
@@ -72,6 +74,7 @@ export const TripLocationInputs = () => {
         <PlaceAutocomplete
           onPlaceSelect={handleToPlaceChanged}
           defaultValue={toLocationName}
+          userLocation={userLocation}
           placeholder="Destination..."
           className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
         />

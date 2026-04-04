@@ -12,7 +12,8 @@ import (
 )
 
 type PlaceDetailsRequest struct {
-	PlaceID string `json:"placeId"`
+	PlaceID      string `json:"placeId"`
+	SessionToken string `json:"sessionToken,omitempty"`
 }
 
 type PlaceDetailsResponse struct {
@@ -40,12 +41,17 @@ func PlaceDetailsHandler(c *gin.Context) {
 	}
 
 	var googleResp map[string]interface{}
-	resp, err := config.RestyClient.R().
+	request := config.RestyClient.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("X-Goog-Api-Key", config.Envs.GoogleMapsAPIKey).
 		SetHeader("X-Goog-FieldMask", "id,name,formattedAddress,location,displayName").
-		SetResult(&googleResp).
-		Get(fmt.Sprintf("https://places.googleapis.com/v1/places/%s", req.PlaceID))
+		SetResult(&googleResp)
+
+	if req.SessionToken != "" {
+		request.SetQueryParam("sessionToken", req.SessionToken)
+	}
+
+	resp, err := request.Get(fmt.Sprintf("https://places.googleapis.com/v1/places/%s", req.PlaceID))
 
 	if err != nil || resp.StatusCode() != 200 {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "place details fetch failed"})

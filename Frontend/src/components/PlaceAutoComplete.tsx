@@ -20,6 +20,7 @@ interface PlaceAutocompleteProps {
   className: string;
   placeholder: string;
   defaultValue: string | null;
+  userLocation?: { lat: number; lng: number } | null;
 }
 
 export const PlaceAutocomplete = ({
@@ -27,6 +28,7 @@ export const PlaceAutocomplete = ({
   className,
   placeholder,
   defaultValue,
+  userLocation,
 }: PlaceAutocompleteProps) => {
   const [inputValue, setInputValue] = useState(defaultValue || "");
   const [predictions, setPredictions] = useState<AutocompleteSuggestion[]>([]);
@@ -48,6 +50,8 @@ export const PlaceAutocomplete = ({
     };
   }, []);
 
+  const [sessionToken, setSessionToken] = useState<string>("");
+
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -60,12 +64,19 @@ export const PlaceAutocomplete = ({
     const value = e.target.value;
     setInputValue(value);
 
+    let currentToken = sessionToken;
+    if (!currentToken && value) {
+      currentToken = Math.random().toString(36).substring(2, 15);
+      setSessionToken(currentToken);
+    }
+
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
 
     if (!value) {
       setPredictions([]);
+      setSessionToken("");
       onPlaceSelect(null);
       return;
     }
@@ -74,22 +85,27 @@ export const PlaceAutocomplete = ({
       try {
         const res = await api.post<AutocompleteSuggestion[]>("/autocomplete", {
           input: value,
+          sessionToken: currentToken,
+          latitude: userLocation?.lat,
+          longitude: userLocation?.lng,
         });
         setPredictions(res.data);
       } catch (err) {
         console.error("Autocomplete failed:", err);
       }
-    }, 1000);
+    }, 500);
   };
 
   const handleSelect = async (prediction: AutocompleteSuggestion) => {
     try {
       const res = await api.post<PlaceDetails>("/place-details", {
         placeId: prediction.placeId,
+        sessionToken: sessionToken,
       });
       const place = res.data;
       setInputValue(place.formattedAddress || place.name);
       setPredictions([]);
+      setSessionToken(""); // Reset token after session is complete
       onPlaceSelect(place);
     } catch (err) {
       console.error("Place details failed:", err);

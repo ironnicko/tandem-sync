@@ -12,7 +12,10 @@ import (
 )
 
 type AutocompleteRequest struct {
-	Input string `json:"input"`
+	Input        string   `json:"input"`
+	SessionToken string   `json:"sessionToken,omitempty"`
+	Latitude     *float64 `json:"latitude,omitempty"`
+	Longitude    *float64 `json:"longitude,omitempty"`
 }
 
 type AutocompleteSuggestion struct {
@@ -38,13 +41,31 @@ func AutocompleteHandler(c *gin.Context) {
 		}
 	}
 
+	body := map[string]interface{}{
+		"input": req.Input,
+	}
+
+	if req.SessionToken != "" {
+		body["sessionToken"] = req.SessionToken
+	}
+
+	if req.Latitude != nil && req.Longitude != nil {
+		body["locationBias"] = map[string]interface{}{
+			"circle": map[string]interface{}{
+				"center": map[string]interface{}{
+					"latitude":  *req.Latitude,
+					"longitude": *req.Longitude,
+				},
+				"radius": 10000.0,
+			},
+		}
+	}
+
 	var googleResp map[string]interface{}
 	resp, err := config.RestyClient.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("X-Goog-Api-Key", config.Envs.GoogleMapsAPIKey).
-		SetBody(map[string]interface{}{
-			"input": req.Input,
-		}).
+		SetBody(body).
 		SetResult(&googleResp).
 		Post("https://places.googleapis.com/v1/places:autocomplete")
 
