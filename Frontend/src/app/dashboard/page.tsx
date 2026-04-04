@@ -17,7 +17,6 @@ import RoutePolyline from "@/components/RoutePolyline";
 import polyline from "@mapbox/polyline";
 import api from "@/lib/axios";
 
-
 function hashStringToHsl(str: string) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -133,7 +132,8 @@ export default function DashboardPage() {
         defaultCenter={userLocation}
         disableDefaultUI={true}
         mapId={process.env.NEXT_PUBLIC_GOOGLE_MAP_ID}
-        defaultZoom={15}
+        defaultZoom={17}
+        maxZoom={17}
         style={{ width: "100%", height: "100%" }}
       >
         {fromLocation && <AdvancedMarker position={fromLocation} />}
@@ -179,20 +179,14 @@ export default function DashboardPage() {
           })}
 
         <FitBoundsHandler
-          fromLocation={
-            (user?.currentRide ? userLocation : fromLocation) 
-          }
+          fromLocation={user?.currentRide ? userLocation : fromLocation}
           toLocation={toLocation}
           otherUsers={otherUsers}
           trigger={fitTrigger}
         />
       </Map>
 
-      {!!user?.currentRide ? (
-        <OnGoingTrip/>
-      ) : (
-        <BottomSection/>
-      )}
+      {!!user?.currentRide ? <OnGoingTrip /> : <BottomSection />}
     </div>
   );
 }
