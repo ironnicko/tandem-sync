@@ -70,7 +70,6 @@ export default function DashboardPage() {
       },
       (err) => console.error("Geolocation error:", err),
       {
-        enableHighAccuracy: true,
         maximumAge: 5000,
         timeout: 10000,
       },
@@ -181,7 +180,7 @@ export default function DashboardPage() {
 
         <FitBoundsHandler
           fromLocation={
-            (user?.currentRide ? null : fromLocation) || userLocation
+            (user?.currentRide ? userLocation : fromLocation) 
           }
           toLocation={toLocation}
           otherUsers={otherUsers}
