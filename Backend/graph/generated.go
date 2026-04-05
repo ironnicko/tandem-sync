@@ -94,7 +94,6 @@ type ComplexityRoot struct {
 	Mutation struct {
 		CreateRide              func(childComplexity int, maxRiders int, visibility string, startLat float64, startLng float64, destinationLat float64, destinationLng float64, startName string, destinationName string, tripName string) int
 		JoinRide                func(childComplexity int, rideCode string, role string) int
-		SendSignal              func(childComplexity int, rideCode string, signalType string, lat *float64, lng *float64) int
 		SetUserPushNotification func(childComplexity int, input models.UpdateUserInput) int
 		UpdateRide              func(childComplexity int, rideCode string, requestType *string, maxRiders *int, visibility *string, endedAt *string, startedAt *string, status *string, tripName *string) int
 	}
@@ -106,6 +105,7 @@ type ComplexityRoot struct {
 	}
 
 	PushSubscription struct {
+		DeviceId func(childComplexity int) int
 		Endpoint func(childComplexity int) int
 		Keys     func(childComplexity int) int
 	}
@@ -116,7 +116,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Me         func(childComplexity int) int
+		Me         func(childComplexity int, deviceID *string) int
 		MyRides    func(childComplexity int) int
 		Ride       func(childComplexity int, rideCode string) int
 		User       func(childComplexity int, userID string) int
@@ -194,13 +194,12 @@ type MutationResolver interface {
 	UpdateRide(ctx context.Context, rideCode string, requestType *string, maxRiders *int, visibility *string, endedAt *string, startedAt *string, status *string, tripName *string) (*models.Ride, error)
 	SetUserPushNotification(ctx context.Context, input models.UpdateUserInput) (*models.DBUsers, error)
 	JoinRide(ctx context.Context, rideCode string, role string) (*models.Ride, error)
-	SendSignal(ctx context.Context, rideCode string, signalType string, lat *float64, lng *float64) (bool, error)
 }
 type ParticipantResolver interface {
 	UserID(ctx context.Context, obj *models.Participant) (string, error)
 }
 type QueryResolver interface {
-	Me(ctx context.Context) (*models.User, error)
+	Me(ctx context.Context, deviceID *string) (*models.User, error)
 	Ride(ctx context.Context, rideCode string) (*models.Ride, error)
 	MyRides(ctx context.Context) ([]*models.Ride, error)
 	User(ctx context.Context, userID string) (*models.User, error)
@@ -462,17 +461,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.JoinRide(childComplexity, args["rideCode"].(string), args["role"].(string)), true
-	case "Mutation.sendSignal":
-		if e.ComplexityRoot.Mutation.SendSignal == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_sendSignal_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.SendSignal(childComplexity, args["rideCode"].(string), args["signalType"].(string), args["lat"].(*float64), args["lng"].(*float64)), true
 	case "Mutation.setUserPushNotification":
 		if e.ComplexityRoot.Mutation.SetUserPushNotification == nil {
 			break
@@ -515,6 +503,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Participant.UserID(childComplexity), true
 
+	case "PushSubscription.deviceId":
+		if e.ComplexityRoot.PushSubscription.DeviceId == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PushSubscription.DeviceId(childComplexity), true
 	case "PushSubscription.endpoint":
 		if e.ComplexityRoot.PushSubscription.Endpoint == nil {
 			break
@@ -546,7 +540,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.ComplexityRoot.Query.Me(childComplexity), true
+		args, err := ec.field_Query_me_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Me(childComplexity, args["deviceId"].(*string)), true
 	case "Query.myRides":
 		if e.ComplexityRoot.Query.MyRides == nil {
 			break
@@ -875,6 +874,7 @@ var sources = []*ast.Source{
 }
 
 type PushSubscription {
+  deviceId: String!
   endpoint: String!
   keys: PushSubscriptionKeys!
 }
@@ -885,6 +885,7 @@ input PushSubscriptionKeysInput {
 }
 
 input PushSubscriptionInput {
+  deviceId: String!
   endpoint: String!
   keys: PushSubscriptionKeysInput!
   expirationTime: String
@@ -997,7 +998,7 @@ type Signal {
 }
 
 type Query {
-  me: User!
+  me(deviceId: String): User!
   ride(rideCode: String!): Ride!
   myRides: [Ride!]!
   user(userId: String!): User!
@@ -1032,13 +1033,6 @@ type Mutation {
   setUserPushNotification(input: UpdateUserInput!): DBUser!
 
   joinRide(rideCode: String!, role: String!): Ride!
-
-  sendSignal(
-    rideCode: String!
-    signalType: String!
-    lat: Float
-    lng: Float
-  ): Boolean!
 }
 `, BuiltIn: false},
 }
@@ -1115,32 +1109,6 @@ func (ec *executionContext) field_Mutation_joinRide_args(ctx context.Context, ra
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_sendSignal_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "rideCode", ec.unmarshalNString2string)
-	if err != nil {
-		return nil, err
-	}
-	args["rideCode"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "signalType", ec.unmarshalNString2string)
-	if err != nil {
-		return nil, err
-	}
-	args["signalType"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "lat", ec.unmarshalOFloat2ᚖfloat64)
-	if err != nil {
-		return nil, err
-	}
-	args["lat"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "lng", ec.unmarshalOFloat2ᚖfloat64)
-	if err != nil {
-		return nil, err
-	}
-	args["lng"] = arg3
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_setUserPushNotification_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1206,6 +1174,17 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_me_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "deviceId", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["deviceId"] = arg0
 	return args, nil
 }
 
@@ -2188,6 +2167,8 @@ func (ec *executionContext) fieldContext_DBUser_pushSubscriptions(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "deviceId":
+				return ec.fieldContext_PushSubscription_deviceId(ctx, field)
 			case "endpoint":
 				return ec.fieldContext_PushSubscription_endpoint(ctx, field)
 			case "keys":
@@ -2521,47 +2502,6 @@ func (ec *executionContext) fieldContext_Mutation_joinRide(ctx context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_sendSignal(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_sendSignal,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().SendSignal(ctx, fc.Args["rideCode"].(string), fc.Args["signalType"].(string), fc.Args["lat"].(*float64), fc.Args["lng"].(*float64))
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_sendSignal(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_sendSignal_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Participant_userId(ctx context.Context, field graphql.CollectedField, obj *models.Participant) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2639,6 +2579,35 @@ func (ec *executionContext) _Participant_joinedAt(ctx context.Context, field gra
 func (ec *executionContext) fieldContext_Participant_joinedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Participant",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PushSubscription_deviceId(ctx context.Context, field graphql.CollectedField, obj *models.PushSubscription) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PushSubscription_deviceId,
+		func(ctx context.Context) (any, error) {
+			return obj.DeviceId, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PushSubscription_deviceId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PushSubscription",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -2778,7 +2747,8 @@ func (ec *executionContext) _Query_me(ctx context.Context, field graphql.Collect
 		field,
 		ec.fieldContext_Query_me,
 		func(ctx context.Context) (any, error) {
-			return ec.Resolvers.Query().Me(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Me(ctx, fc.Args["deviceId"].(*string))
 		},
 		nil,
 		ec.marshalNUser2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐUser,
@@ -2787,7 +2757,7 @@ func (ec *executionContext) _Query_me(ctx context.Context, field graphql.Collect
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_me(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -2818,6 +2788,17 @@ func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graph
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_me_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -4141,6 +4122,8 @@ func (ec *executionContext) fieldContext_User_pushSubscriptions(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "deviceId":
+				return ec.fieldContext_PushSubscription_deviceId(ctx, field)
 			case "endpoint":
 				return ec.fieldContext_PushSubscription_endpoint(ctx, field)
 			case "keys":
@@ -5609,13 +5592,20 @@ func (ec *executionContext) unmarshalInputPushSubscriptionInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"endpoint", "keys", "expirationTime"}
+	fieldsInOrder := [...]string{"deviceId", "endpoint", "keys", "expirationTime"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "deviceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deviceId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeviceID = data
 		case "endpoint":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endpoint"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -6414,13 +6404,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "sendSignal":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_sendSignal(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6535,6 +6518,11 @@ func (ec *executionContext) _PushSubscription(ctx context.Context, sel ast.Selec
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("PushSubscription")
+		case "deviceId":
+			out.Values[i] = ec._PushSubscription_deviceId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "endpoint":
 			out.Values[i] = ec._PushSubscription_endpoint(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -7997,23 +7985,6 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	_ = ctx
 	res := graphql.MarshalBoolean(*v)
 	return res
-}
-
-func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v any) (*float64, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := graphql.UnmarshalFloatContext(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel ast.SelectionSet, v *float64) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	_ = sel
-	res := graphql.MarshalFloatContext(*v)
-	return graphql.WrapContextMarshaler(ctx, res)
 }
 
 func (ec *executionContext) marshalOGeoLocation2ᚖgithubᚗcomᚋironnickoᚋtandemᚑsyncᚋBackendᚋmodelsᚐGeoLocation(ctx context.Context, sel ast.SelectionSet, v *models.GeoLocation) graphql.Marshaler {

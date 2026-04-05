@@ -13,6 +13,7 @@ import PushNotificationManager from "@/components/PushNotificationManager";
 import { gqlClient } from "@/lib/graphql/client";
 import { distanceMeters } from "@/lib/utils";
 import { ME } from "@/lib/graphql/query";
+import { getDeviceId } from "@/lib/utils";
 import RoutePolyline from "@/components/RoutePolyline";
 import polyline from "@mapbox/polyline";
 import api from "@/lib/axios";
@@ -82,6 +83,7 @@ export default function DashboardPage() {
     const getData = async () => {
       const { data: gqlData } = await gqlClient.query<{ me: UserState }>({
         query: ME,
+        variables: { deviceId: getDeviceId() },
         fetchPolicy: "network-only",
       });
       setUser({ ...user, ...gqlData.me });

@@ -80,8 +80,8 @@ export const GET_USERS_BY_IDS = gql`
 `;
 
 export const ME = gql`
-    query {
-        me {
+    query Me($deviceId: String) {
+        me(deviceId: $deviceId) {
             id
             name
             email
@@ -90,6 +90,7 @@ export const ME = gql`
             currentRide
             image
             pushSubscriptions {
+                deviceId
                 endpoint
                 keys {
                   p256dh

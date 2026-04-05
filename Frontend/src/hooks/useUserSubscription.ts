@@ -2,6 +2,7 @@ import { useMutation } from "@apollo/client/react";
 import { SET_USER_PUSH_NOTIFICATION } from "@/lib/graphql/mutation";
 import { UserState } from "@/stores/types";
 import { useAuth } from "@/stores/useAuth";
+import { getDeviceId } from "@/lib/utils";
 
 export function useUserSubscription() {
     const [setUserPushNotification] = useMutation<{
@@ -10,11 +11,15 @@ export function useUserSubscription() {
     const { user, setUser } = useAuth();
 
     async function subscribeUser(sub: PushSubscription) {
+        const deviceId = getDeviceId();
         try {
             const { data } = await setUserPushNotification({
                 variables: {
                     input: {
-                        pushSubscription: sub,
+                        pushSubscription: {
+                            ...sub,
+                            deviceId
+                        },
                     },
                 },
             });
@@ -29,10 +34,16 @@ export function useUserSubscription() {
     }
 
     async function unsubscribeUser() {
+        const deviceId = getDeviceId();
         try {
             const { data } = await setUserPushNotification({
                 variables: {
                     input: {
+                        pushSubscription: {
+                            endpoint: "",
+                            keys: { p256dh: "", auth: "" },
+                            deviceId
+                        },
                         clearSubscription: true,
                     },
                 },

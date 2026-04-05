@@ -4,6 +4,7 @@ type PushSubscriptionKeys {
 }
 
 type PushSubscription {
+  deviceId: String!
   endpoint: String!
   keys: PushSubscriptionKeys!
 }
@@ -14,6 +15,7 @@ input PushSubscriptionKeysInput {
 }
 
 input PushSubscriptionInput {
+  deviceId: String!
   endpoint: String!
   keys: PushSubscriptionKeysInput!
   expirationTime: String
@@ -126,7 +128,7 @@ type Signal {
 }
 
 type Query {
-  me: User!
+  me(deviceId: String): User!
   ride(rideCode: String!): Ride!
   myRides: [Ride!]!
   user(userId: String!): User!
@@ -161,11 +163,4 @@ type Mutation {
   setUserPushNotification(input: UpdateUserInput!): DBUser!
 
   joinRide(rideCode: String!, role: String!): Ride!
-
-  sendSignal(
-    rideCode: String!
-    signalType: String!
-    lat: Float
-    lng: Float
-  ): Boolean!
 }

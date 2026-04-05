@@ -19,7 +19,6 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export default function PushNotificationManager() {
-  const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [isSupported, setIsSupported] = useState(false);
   const [localSubscription, setLocalSubscription] = useState<PushSubscription | null>(null);

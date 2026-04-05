@@ -96,6 +96,15 @@ export interface DashboardState {
   updateDashboard: (partial: Partial<DashboardState>) => void;
 }
 
+export interface PushSubscription {
+  deviceId: string;
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
 export interface UserState {
   id: string | null;
   name: string | null;

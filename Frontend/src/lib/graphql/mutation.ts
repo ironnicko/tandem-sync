@@ -132,6 +132,7 @@ export const SET_USER_PUSH_NOTIFICATION = gql`
   mutation SetUserPushNotification($input: UpdateUserInput!) {
     setUserPushNotification(input: $input) {
       pushSubscriptions {
+        deviceId
         endpoint
         keys {
           p256dh

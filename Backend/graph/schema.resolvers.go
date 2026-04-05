@@ -176,21 +176,7 @@ func (r *mutationResolver) UpdateRide(ctx context.Context, rideCode string, requ
 				return nil, fmt.Errorf("failed to get ride users: %w", err)
 			}
 
-			// Send notifications asynchronously
-			go func(users []models.DBUsers) {
-				for _, user := range users {
-					for _, sub := range user.PushSubscriptions {
-						if sub != nil {
-							utils.SendNotification(
-								sub,
-								"Ride Started...",
-								ride.TripName+" is starting now.",
-								"./icon.png",
-							)
-						}
-					}
-				}
-			}(*users)
+			go SendNotification(*users, ride, "Ride Started...", ride.TripName+" is starting now.")
 
 		case "join":
 			_, err = usersColl.UpdateOne(ctx,
@@ -215,20 +201,7 @@ func (r *mutationResolver) UpdateRide(ctx context.Context, rideCode string, requ
 				return nil, fmt.Errorf("failed to get ride users: %w", err)
 			}
 
-			go func(users []models.DBUsers) {
-				for _, user := range users {
-					for _, sub := range user.PushSubscriptions {
-						if sub != nil {
-							utils.SendNotification(
-								sub,
-								"Ride Ended...",
-								ride.TripName+" has ended.",
-								"./icon.png",
-							)
-						}
-					}
-				}
-			}(*users)
+			go SendNotification(*users, ride, "Ride Ended...", ride.TripName+" has ended.")
 
 		case "remove":
 			_, err = usersColl.UpdateOne(ctx,
@@ -261,6 +234,7 @@ func (r *mutationResolver) SetUserPushNotification(ctx context.Context, input mo
 	if input.PushSubscription != nil {
 		ps := input.PushSubscription
 		psUpdate := bson.M{
+			"deviceId": ps.DeviceID,
 			"endpoint": ps.Endpoint,
 			"keys": bson.M{
 				"p256dh": ps.Keys.P256dh,
@@ -268,29 +242,38 @@ func (r *mutationResolver) SetUserPushNotification(ctx context.Context, input mo
 			},
 		}
 
-		// Remove existing subscription with same endpoint to avoid duplicates
+		// Remove existing subscription with same deviceId or endpoint to avoid duplicates
+		_, _ = usersColl.UpdateOne(ctx,
+			bson.M{"_id": userID},
+			bson.M{"$pull": bson.M{"pushSubscriptions": bson.M{"deviceId": ps.DeviceID}}},
+		)
 		_, _ = usersColl.UpdateOne(ctx,
 			bson.M{"_id": userID},
 			bson.M{"$pull": bson.M{"pushSubscriptions": bson.M{"endpoint": ps.Endpoint}}},
 		)
 
-		// Add new subscription
-		_, err = usersColl.UpdateOne(ctx,
-			bson.M{"_id": userID},
-			bson.M{"$push": bson.M{"pushSubscriptions": psUpdate}},
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to update user: %w", err)
+		if input.ClearSubscription == nil || !*input.ClearSubscription {
+			// Add new subscription (if not clearing)
+			_, err = usersColl.UpdateOne(ctx,
+				bson.M{"_id": userID},
+				bson.M{"$push": bson.M{"pushSubscriptions": psUpdate}},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to update user: %w", err)
+			}
 		}
 	}
 
 	if input.ClearSubscription != nil && *input.ClearSubscription {
-		_, err = usersColl.UpdateOne(ctx,
-			bson.M{"_id": userID},
-			bson.M{"$set": bson.M{"pushSubscriptions": []interface{}{}}},
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to clear subscriptions: %w", err)
+		if input.PushSubscription == nil || input.PushSubscription.DeviceID == "" {
+			// Global clear (only if no specific deviceId provided)
+			_, err = usersColl.UpdateOne(ctx,
+				bson.M{"_id": userID},
+				bson.M{"$set": bson.M{"pushSubscriptions": []interface{}{}}},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to clear subscriptions: %w", err)
+			}
 		}
 	}
 
@@ -353,43 +336,13 @@ func (r *mutationResolver) JoinRide(ctx context.Context, rideCode string, role s
 	return &updated, nil
 }
 
-// --- SendSignal ---
-func (r *mutationResolver) SendSignal(ctx context.Context, rideCode string, signalType string, lat *float64, lng *float64) (bool, error) {
-	userIDHex := ctx.Value("userId").(string)
-	userID, err := primitive.ObjectIDFromHex(userIDHex)
-	if err != nil {
-		return false, fmt.Errorf("invalid userId: %w", err)
-	}
-
-	var location *models.GeoLocation
-	if lat != nil && lng != nil {
-		location = &models.GeoLocation{Lat: *lat, Lng: *lng}
-	}
-
-	signal := models.Signal{
-		ID:        primitive.NewObjectID(),
-		RideCode:  rideCode,
-		FromUser:  userID,
-		Type:      signalType,
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
-		Location:  location,
-	}
-
-	coll := db.GetCollection("bikeapp", "signals")
-	if _, err := coll.InsertOne(ctx, signal); err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
 // UserID is the resolver for the userId field.
 func (r *participantResolver) UserID(ctx context.Context, obj *models.Participant) (string, error) {
 	return obj.UserID.Hex(), nil
 }
 
 // --- Query Resolvers ---
-func (r *queryResolver) Me(ctx context.Context) (*models.User, error) {
+func (r *queryResolver) Me(ctx context.Context, deviceID *string) (*models.User, error) {
 	betterAuthID := ctx.Value("userId").(string)
 	betterAuthIDobj, err := primitive.ObjectIDFromHex(betterAuthID)
 	if err != nil {

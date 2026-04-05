@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ironnicko/tandem-sync/Backend/models"
+	"github.com/ironnicko/tandem-sync/Backend/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -14,11 +15,19 @@ import (
 //
 // It serves as dependency injection for your app, add any dependencies you require here.
 
-func getGeoLocation(lat *float64, lng *float64) (*models.GeoLocation, error) {
-	if lat != nil && lng != nil {
-		return &models.GeoLocation{Lat: *lat, Lng: *lng}, nil
+func SendNotification(users []models.DBUsers, ride models.Ride, title string, message string) {
+	for _, user := range users {
+		for _, sub := range user.PushSubscriptions {
+			if sub != nil {
+				utils.SendNotification(
+					sub,
+					title,
+					message,
+					"./logo.svg",
+				)
+			}
+		}
 	}
-	return nil, fmt.Errorf("Latitute or Longitude wasn't provided!")
 }
 
 func getUsersFromRideParticipants(ctx context.Context, ride models.Ride, usersColl *mongo.Collection) (*[]models.DBUsers, error) {

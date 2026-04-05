@@ -11,7 +11,7 @@ import { useDashboard } from "@/stores/useDashboard";
 export function useOnGoingTrip() {
   const { user } = useAuth();
   const { userLocation, updateDashboard } = useDashboard();
-  const { joinRide, leaveRide, sendSignal, inRoom, sendLocation, onRideEnded } =
+  const { joinRide, leaveRide, sendSignal, inRoom, onRideEnded } =
     useSocket();
   const { data, loading, error } = useQuery<{ ride: RideState }>(RIDE, {
     variables: { rideCode: user.currentRide },

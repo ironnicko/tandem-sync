@@ -7,8 +7,9 @@ import (
 )
 
 type PushSubscription struct {
-	Endpoint string               `json:"endpoint"`
-	Keys     PushSubscriptionKeys `json:"keys"`
+	DeviceId string               `json:"deviceId" bson:"deviceId"`
+	Endpoint string               `json:"endpoint" bson:"endpoint"`
+	Keys     PushSubscriptionKeys `json:"keys" bson:"keys"`
 }
 
 type PushSubscriptionKeys struct {
@@ -48,7 +49,7 @@ type User struct {
 	UpdatedAt     time.Time          `json:"updatedAt" bson:"updatedAt"`
 	// from DBUser
 	IsActive          bool                `json:"isActive" bson:"isActive"`
-	CurrentRide       *string             `json:"currentRide,omitempty" json:"currentRide,omitempty"`
+	CurrentRide       *string             `json:"currentRide,omitempty"`
 	PushSubscriptions []*PushSubscription `json:"pushSubscriptions,omitempty" bson:"pushSubscriptions,omitempty"`
 }
 

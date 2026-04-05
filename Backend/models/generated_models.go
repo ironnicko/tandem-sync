@@ -6,6 +6,7 @@ type Mutation struct {
 }
 
 type PushSubscriptionInput struct {
+	DeviceID       string                     `json:"deviceId"`
 	Endpoint       string                     `json:"endpoint"`
 	Keys           *PushSubscriptionKeysInput `json:"keys"`
 	ExpirationTime *string                    `json:"expirationTime,omitempty"`
