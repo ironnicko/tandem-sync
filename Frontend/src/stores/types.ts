@@ -24,22 +24,26 @@
 //     };
 //
 
-export type AnnouncementType = "join" | "leave" | "success" | "info";
+export type AnnouncementType = "join" | "leave" | "success" | "info"
+  | "Right" | "Left" | "Refuel" | "Stop" | "Police Alert" | "U-Turn"
+  | "Machine Issue" | "Medic Help" | "Accident Ahead";
 
 export interface Announcement {
   id: string;
   message: string;
   type: AnnouncementType;
   createdAt: number;
+  userId?: string;
 }
 
 export interface AnnouncerStore {
   announcements: Announcement[];
   lastActivity: number;
-
-  addAnnouncement: (msg: string, type?: AnnouncementType) => void;
+  pushDismissed: boolean;
+  addAnnouncement: (msg: string, type?: AnnouncementType, userId?: string) => void;
   removeAnnouncement: (id: string) => void;
   clearAnnouncements: () => void;
+  setPushDismissed: (pushDismissed: boolean) => void;
   resetActivity: () => void;
 }
 

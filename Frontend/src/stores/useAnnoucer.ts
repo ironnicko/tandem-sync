@@ -4,14 +4,15 @@ import { Announcement, AnnouncerStore } from "./types";
 export const useAnnouncerStore = create<AnnouncerStore>((set) => ({
   announcements: [],
   lastActivity: Date.now(),
-
-  addAnnouncement: (msg, type = "info") =>
+  pushDismissed: false,
+  addAnnouncement: (msg, type = "info", userId) =>
     set((state) => {
       const newA: Announcement = {
         id: crypto.randomUUID(),
         message: msg,
         type,
         createdAt: Date.now(),
+        userId,
       };
 
       return {
@@ -33,4 +34,8 @@ export const useAnnouncerStore = create<AnnouncerStore>((set) => ({
     set({
       lastActivity: Date.now(),
     }),
+
+    setPushDismissed: (pushDismissed) => {
+      set({ pushDismissed });
+    },
 }));

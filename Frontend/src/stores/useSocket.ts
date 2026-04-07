@@ -21,8 +21,9 @@ export const useSocket = create<SocketState>((set) => {
 
       case "sentSignal":
         announcer.addAnnouncement(
-          `${userName} : ${msg.data.signalType}`,
-          "info",
+          `${msg.data.signalType}`,
+          msg.data.signalType,
+          msg.data.userId,
         );
         break;
 
@@ -31,17 +32,29 @@ export const useSocket = create<SocketState>((set) => {
           const joinedName =
             useOtherUsers.getState().getUserById(msg.data.userId)?.name ||
             "Someone";
-          announcer.addAnnouncement(`${joinedName} joined the ride`, "join");
+          announcer.addAnnouncement(
+            `${joinedName} joined the ride`,
+            "join",
+            msg.data.userId,
+          );
         });
         break;
 
       case "userLeft":
-        announcer.addAnnouncement(`${userName} left the ride`, "leave");
+        announcer.addAnnouncement(
+          `${userName} left the ride`,
+          "leave",
+          msg.data.userId,
+        );
         otherUsers.setUserLocation(msg.data.userId, null);
         break;
 
       case "rideEnded":
-        announcer.addAnnouncement(`${userName} ended the ride`, "info");
+        announcer.addAnnouncement(
+          `${userName} ended the ride`,
+          "info",
+          msg.data.userId,
+        );
         rideEndedCb?.();
         break;
     }

@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Bell, BellRing } from "lucide-react";
 import { sendNotification } from "@/app/actions";
 import { useUserSubscription } from "@/hooks/useUserSubscription";
+import { useAuth } from "@/stores/useAuth";
+import { useAnnouncerStore } from "@/stores/useAnnoucer";
 
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -25,29 +27,35 @@ export default function PushNotificationManager() {
   const [isSupported, setIsSupported] = useState(false);
   const [localSubscription, setLocalSubscription] = useState<PushSubscription | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(false);
+  const { user } = useAuth();
+  const { pushDismissed, setPushDismissed } = useAnnouncerStore();
   const { subscribeUser, unsubscribeUser } = useUserSubscription();
 
 
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
-      setIsSupported(true);
-      registerServiceWorker();
-      checkSubscription();
+      (async () => {
+        await registerServiceWorker();
+        await checkSubscription();
+        setIsSupported(true);
+      })();
     }
   }, []);
 
   useEffect(() => {
-    if (isSupported && !localSubscription && !isDismissed) {
+    if (isSupported && (!user.pushSubscriptions || user.pushSubscriptions.length === 0) && !pushDismissed) {
       const timer = setTimeout(() => setShowPrompt(true), 3000);
       return () => clearTimeout(timer);
     }
-  }, [isSupported, localSubscription, isDismissed]);
+  }, [isSupported, user, pushDismissed]);
 
   async function checkSubscription() {
     const registration = await navigator.serviceWorker.ready;
     const sub = await registration.pushManager.getSubscription();
     setLocalSubscription(sub);
+    if (sub && (!user.pushSubscriptions || user.pushSubscriptions.length === 0)) {
+      await subscribeUser(JSON.parse(JSON.stringify(sub)));
+    }
   }
 
   async function registerServiceWorker() {
@@ -59,7 +67,15 @@ export default function PushNotificationManager() {
 
   async function subscribeToPush() {
     try {
+      const permission = await Notification.requestPermission();
+
+      if (permission !== "granted") {
+        console.warn("Notification permission not granted");
+        return;
+      }
+
       const registration = await navigator.serviceWorker.ready;
+
       const sub = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(
@@ -69,6 +85,7 @@ export default function PushNotificationManager() {
 
       const serializedSub = JSON.parse(JSON.stringify(sub));
       await subscribeUser(serializedSub);
+
       setLocalSubscription(sub);
       setShowPrompt(false);
     } catch (err) {
@@ -78,8 +95,7 @@ export default function PushNotificationManager() {
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    setIsDismissed(true);
-    localStorage.setItem("push-prompt-dismissed", Date.now().toString());
+    setPushDismissed(true);
   };
 
   async function unsubscribeFromPush() {

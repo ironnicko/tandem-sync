@@ -61,7 +61,7 @@ export function useOnGoingTrip() {
           location: userLocation,
           signalType: type,
         });
-        addAnnouncement(type, "info");
+        addAnnouncement(type, type as any, user.id!);
       }
     } catch (err) {
       console.error("Signal send error:", err);

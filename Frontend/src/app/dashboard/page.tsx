@@ -125,7 +125,9 @@ export default function DashboardPage() {
     fetchRoute();
   }, [userLocation, toLocation]);
 
-  if (!userLocation) return <Loader className="animate-spin" />;
+  if (!userLocation) {
+    return <LoaderScreen />;
+  }
 
   return (
     <div className="relative w-screen h-screen overflow-hidden">
@@ -192,3 +194,20 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+const LoaderScreen = () => (
+  <div className="flex flex-col items-center justify-center w-screen h-screen bg-background gap-6 p-4 text-center">
+    <div className="relative">
+      <Loader className="animate-spin" />
+      <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
+    </div>
+    <div className="space-y-2 max-w-xs">
+      <h2 className="text-xl font-semibold tracking-tight">
+        Syncing Location
+      </h2>
+      <p className="text-muted-foreground text-sm leading-relaxed">
+        Please turn on Location Services to Continue if stuck...
+      </p>
+    </div>
+  </div>
+)

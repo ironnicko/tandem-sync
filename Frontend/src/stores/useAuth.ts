@@ -125,7 +125,6 @@ export const useAuth = create<AuthStore>()(
       setUser: (user) => {
         set({ user });
       },
-
       logout: async () => {
         try {
           await authClient.signOut();

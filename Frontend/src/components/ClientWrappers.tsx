@@ -21,7 +21,7 @@ export default function ClientWrappers({
     >
       <ApolloProvider client={gqlClient}>
         <InstallPrompt />
-        {inRoom && <Announcer />}
+        <Announcer />
         {inRoom && <SendLocation />}
         {children}
       </ApolloProvider>

@@ -1,18 +1,13 @@
 "use client";
 
-import { X, Info, CheckCircle2, UserPlus, LogOut } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAnnouncerStore } from "@/stores/useAnnoucer";
-
-const iconMap = {
-  success: <CheckCircle2 className="text-green-600" size={18} />,
-  join: <UserPlus className="text-blue-600" size={18} />,
-  leave: <LogOut className="text-red-500" size={18} />,
-  info: <Info className="text-gray-500" size={18} />,
-};
+import { useAuth } from "@/stores/useAuth";
+import BigIconOverlay from "./Announcer/BigIconOverlay";
+import ActivityLog from "./Announcer/ActivityLog";
 
 export default function Announcer() {
+  const { user } = useAuth();
   const {
     announcements,
     removeAnnouncement,
@@ -22,28 +17,32 @@ export default function Announcer() {
   } = useAnnouncerStore();
 
   const [isDimmed, setIsDimmed] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [showIcon, setShowIcon] = useState<{
+    type: string;
+    id: string;
+  } | null>(null);
 
-  // 🔹 Restore visibility on interaction
   const handleInteraction = () => {
     setIsDimmed(false);
     resetActivity();
   };
 
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    }
-  }, [announcements]);
 
-  // 🔹 Wake up UI when new announcement comes
   useEffect(() => {
     if (announcements.length > 0) {
       handleInteraction();
-    }
-  }, [announcements.length]);
+      const latest = announcements[announcements.length - 1];
+      
+      // 🔹 Only show big icon for signals from other users, excluding join/leave noise
+      if (latest.userId !== user?.id && latest.type !== "join" && latest.type !== "leave") {
+        setShowIcon({ type: latest.type, id: latest.id });
+      }
 
-  // 🔹 Dim after 5s inactivity (NO polling)
+      const timer = setTimeout(() => setShowIcon(null), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [announcements]);
+
   useEffect(() => {
     const timeout = setTimeout(() => {
       setIsDimmed(true);
@@ -53,54 +52,21 @@ export default function Announcer() {
   }, [lastActivity]);
 
   useEffect(() => {
-    return clearAnnouncements;
+    return () => {
+      clearAnnouncements();
+    };
   }, []);
 
-  if (announcements.length === 0) return null;
-
   return (
-    <motion.div
-      onMouseEnter={handleInteraction}
-      onClick={handleInteraction}
-      className={`fixed top-4 right-4 z-[9999] w-80 transition-opacity duration-500 ${
-        isDimmed ? "opacity-40" : "opacity-100"
-      }`}
-    >
-      <h2 className="text-sm font-semibold text-gray-800 mb-2">Activity Log</h2>
-
-      <div
-        ref={containerRef}
-        className="flex flex-col gap-2 max-h-[10vh] overflow-y-auto"
-      >
-        <AnimatePresence>
-          {announcements.map((a) => (
-            <motion.div
-              key={a.id}
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="flex items-start gap-3 rounded-md p-3 bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
-            >
-              {/* Icon */}
-              <div className="mt-0.5">{iconMap[a.type]}</div>
-
-              {/* Message */}
-              <div className="flex-1 text-sm text-gray-800 leading-snug">
-                {a.message}
-              </div>
-
-              {/* Close */}
-              <button
-                onClick={() => removeAnnouncement(a.id)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X size={14} />
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-    </motion.div>
+    <>
+      <BigIconOverlay showIcon={showIcon} />
+      <ActivityLog
+        announcements={announcements}
+        removeAnnouncement={removeAnnouncement}
+        clearAnnouncements={clearAnnouncements}
+        isDimmed={isDimmed}
+        handleInteraction={handleInteraction}
+      />
+    </>
   );
 }

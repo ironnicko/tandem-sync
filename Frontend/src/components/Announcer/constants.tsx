@@ -1,0 +1,47 @@
+import {
+  Info,
+  CheckCircle2,
+  UserPlus,
+  LogOut,
+  ArrowLeft,
+  ArrowRight,
+  RefreshCcw,
+  Fuel,
+  Square,
+  Ambulance,
+  Wrench,
+  ShieldAlert,
+  AlertTriangle,
+} from "lucide-react";
+
+export const iconMap: Record<string, React.ReactNode> = {
+  success: <CheckCircle2 className="text-green-600" size={18} />,
+  join: <UserPlus className="text-blue-600" size={18} />,
+  leave: <LogOut className="text-red-500" size={18} />,
+  info: <Info className="text-gray-500" size={18} />,
+  Left: <ArrowLeft className="text-green-600" size={18} />,
+  Right: <ArrowRight className="text-red-600" size={18} />,
+  "U-Turn": <RefreshCcw className="text-purple-600" size={18} />,
+  Refuel: <Fuel className="text-blue-600" size={18} />,
+  Stop: <Square className="text-gray-600" size={18} />,
+  "Medic Help": <Ambulance className="text-red-600" size={18} />,
+  "Machine Issue": <Wrench className="text-orange-600" size={18} />,
+  "Police Alert": <ShieldAlert className="text-blue-700" size={18} />,
+  "Accident Ahead": <AlertTriangle className="text-slate-600" size={18} />,
+};
+
+export const bigIconMap: Record<string, React.ReactNode> = {
+  success: <CheckCircle2 className="text-green-500" size={120} />,
+  join: <UserPlus className="text-blue-500" size={120} />,
+  leave: <LogOut className="text-red-500" size={120} />,
+  info: <Info className="text-gray-400" size={120} />,
+  Left: <ArrowLeft className="text-green-500" size={120} />,
+  Right: <ArrowRight className="text-red-500" size={120} />,
+  "U-Turn": <RefreshCcw className="text-purple-500" size={120} />,
+  Refuel: <Fuel className="text-blue-500" size={120} />,
+  Stop: <Square className="text-gray-500" size={120} />,
+  "Medic Help": <Ambulance className="text-red-500" size={120} />,
+  "Machine Issue": <Wrench className="text-orange-500" size={120} />,
+  "Police Alert": <ShieldAlert className="text-blue-600" size={120} />,
+  "Accident Ahead": <AlertTriangle className="text-slate-500" size={120} />,
+};
