@@ -8,10 +8,19 @@ import { useDashboard } from "./useDashboard";
 
 export const useSocket = create<SocketState>((set) => {
   let rideEndedCb: any = null;
+  const leavingTimeouts: Record<string, any> = {};
 
   const handleMessage = (msg: any) => {
     const otherUsers = useOtherUsers.getState();
     const announcer = useAnnouncerStore.getState();
+
+    const cancelLeaving = (userId: string) => {
+      if (leavingTimeouts[userId]) {
+        clearTimeout(leavingTimeouts[userId]);
+        delete leavingTimeouts[userId];
+        otherUsers.updateUser(userId, { isLeaving: false });
+      }
+    };
     const userName = otherUsers.getUserById(msg.data.userId)?.name || "Someone";
 
     switch (msg.eventType) {
@@ -28,6 +37,7 @@ export const useSocket = create<SocketState>((set) => {
         break;
 
       case "userJoined":
+        cancelLeaving(msg.data.userId);
         otherUsers.fetchUsersByIds([msg.data.userId]).then(() => {
           const joinedName =
             useOtherUsers.getState().getUserById(msg.data.userId)?.name ||
@@ -46,7 +56,18 @@ export const useSocket = create<SocketState>((set) => {
           "leave",
           msg.data.userId,
         );
-        otherUsers.setUserLocation(msg.data.userId, null);
+        otherUsers.updateUser(msg.data.userId, {
+          isLeaving: true,
+        });
+
+        cancelLeaving(msg.data.userId);
+        leavingTimeouts[msg.data.userId] = setTimeout(() => {
+          otherUsers.updateUser(msg.data.userId, {
+            location: null,
+            isLeaving: false,
+          });
+          delete leavingTimeouts[msg.data.userId];
+        }, 15000);
         break;
 
       case "rideEnded":

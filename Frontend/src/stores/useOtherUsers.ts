@@ -22,7 +22,7 @@ export const useOtherUsers = create<OtherUsersStore>((set, get) => ({
 
   getUserById: (id) => get().users[id],
 
-  setUserLocation: (userId, location) =>
+  updateUser: (userId, partialUser) =>
     set((state) => {
       const existingUser = state.users[userId];
       if (!existingUser) return state;
@@ -30,7 +30,7 @@ export const useOtherUsers = create<OtherUsersStore>((set, get) => ({
       return {
         users: {
           ...state.users,
-          [userId]: { ...existingUser, location },
+          [userId]: { ...existingUser, ...partialUser },
         },
       };
     }),
@@ -110,7 +110,11 @@ export const useOtherUsers = create<OtherUsersStore>((set, get) => ({
       const clearedUsers = { ...state.users };
       Object.keys(clearedUsers).forEach((userId) => {
         if (clearedUsers[userId]) {
-          clearedUsers[userId] = { ...clearedUsers[userId], location: null };
+          clearedUsers[userId] = {
+            ...clearedUsers[userId],
+            location: null,
+            isLeaving: false,
+          };
         }
       });
       return { users: clearedUsers };

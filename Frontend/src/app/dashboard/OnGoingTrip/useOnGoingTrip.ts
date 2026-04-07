@@ -68,6 +68,8 @@ export function useOnGoingTrip() {
     }
   };
 
+  const { users } = useOtherUsers();
+
   return {
     ride: data?.ride,
     loading,
@@ -75,6 +77,6 @@ export function useOnGoingTrip() {
     announcements,
     removeAnnouncement,
     handleSendSignal,
-    otherUsers: useOtherUsers.getState().users,
+    otherUsers: users,
   };
 }

@@ -169,11 +169,10 @@ export default function DashboardPage() {
             return (
               <AdvancedMarker key={id} position={{ lat, lng }}>
                 <div
-                  className="relative flex items-center justify-center w-8 h-8 rounded-full border-2 font-semibold text-xs"
+                  className={`relative flex items-center justify-center w-8 h-8 rounded-full border-2 font-semibold text-xs ${u.isLeaving ? "animate-blink border-red-500 scale-110" : ""}`}
                   style={{
-                    borderColor: userColor,
+                    borderColor: u.isLeaving ? undefined : userColor,
                     backgroundColor: "transparent",
-                    // color: userColor,
                   }}
                 >
                   {u.name}

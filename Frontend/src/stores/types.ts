@@ -121,6 +121,7 @@ export interface UserState {
   image?: string | null;
   location?: GeoLocation | null;
   pushSubscriptions?: PushSubscription[] | null;
+  isLeaving?: boolean | null;
 }
 
 export interface SocketState {
@@ -176,7 +177,7 @@ export interface OtherUsersStore {
   users: Record<string, UserState>; // key = userId
   addUser: (user: UserState) => void;
   addUsers: (users: UserState[]) => void;
-  setUserLocation: (userId: string, location: GeoLocation | null) => void;
+  updateUser: (userId: string, partialUser: Partial<UserState>) => void;
   setUsersLocation: (userLocations: Record<string, GeoLocation>) => void;
   getUserById: (id: string) => UserState | undefined;
   fetchUsersByIds: (ids: string[]) => Promise<void>;

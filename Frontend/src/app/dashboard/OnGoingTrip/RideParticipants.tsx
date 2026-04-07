@@ -28,7 +28,7 @@ export default function RideParticipants({
               {participants.map((p) => (
                 <div
                   key={p.userId}
-                  className="flex items-center justify-between rounded text-sm"
+                  className={`flex items-center justify-between rounded text-sm ${p.user?.isLeaving ? "animate-blink text-red-400" : ""}`}
                 >
                   <div className="flex-1">
                     <p className="font-medium">{p.user?.name || "Unknown"}</p>
