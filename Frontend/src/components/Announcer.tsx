@@ -33,7 +33,6 @@ export default function Announcer() {
       handleInteraction();
       const latest = announcements[announcements.length - 1];
       
-      // 🔹 Only show big icon for signals from other users, excluding join/leave noise
       if (latest.userId !== user?.id && latest.type !== "join" && latest.type !== "leave") {
         setShowIcon({ type: latest.type, id: latest.id });
       }
@@ -46,7 +45,7 @@ export default function Announcer() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       setIsDimmed(true);
-    }, 5000);
+    }, 3000);
 
     return () => clearTimeout(timeout);
   }, [lastActivity]);

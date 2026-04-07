@@ -16,7 +16,7 @@ export const useAnnouncerStore = create<AnnouncerStore>((set) => ({
       };
 
       return {
-        announcements: [...state.announcements.slice(-3), newA], // limit size
+        announcements: [...state.announcements.slice(-2), newA], // limit size
         lastActivity: Date.now(),
       };
     }),

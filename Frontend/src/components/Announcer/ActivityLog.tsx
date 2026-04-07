@@ -88,8 +88,8 @@ export default function ActivityLog({
                       {user?.name?.[0] || "?"}
                     </div>
                   )}
-                  <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm border border-gray-50 bg-white">
-                    <div className="scale-75 origin-center">
+                  <div className="absolute -bottom-0.25 -right-0.25 bg-white rounded-full p-0.25 shadow-sm border border-gray-100">
+                    <div className="scale-70 origin-center flex items-center justify-center">
                       {iconMap[a.type] || iconMap.info}
                     </div>
                   </div>

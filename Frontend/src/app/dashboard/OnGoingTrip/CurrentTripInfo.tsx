@@ -1,11 +1,15 @@
 import { RideState } from "@/stores/types";
-import { MapPin, Clock, Users } from "lucide-react";
+import { MapPin, Clock } from "lucide-react";
 
 interface CurrentTripInfoProps {
   ride: RideState | undefined;
+  participantsOpen?: boolean;
 }
 
-export default function CurrentTripInfo({ ride }: CurrentTripInfoProps) {
+export default function CurrentTripInfo({
+  ride,
+  participantsOpen,
+}: CurrentTripInfoProps) {
   if (!ride) return null;
 
   const formatTime = (date: string | null | undefined) => {
@@ -20,9 +24,15 @@ export default function CurrentTripInfo({ ride }: CurrentTripInfoProps) {
   };
 
   return (
-    <div className="bg-black text-white rounded-lg p-4 shadow-md">
+    <div
+      className={`bg-black text-white rounded-lg p-4 shadow-md max-w-xs ${
+        !participantsOpen ? "pt-10" : ""
+      }`}
+    >
       <div className="flex justify-start">
-        <h3 className="text-lg font-semibold mb-3">{ride.tripName}</h3>
+        <h3 className="text-lg font-semibold mb-3 truncate w-full" title={ride.tripName}>
+          {ride.tripName}
+        </h3>
       </div>
       <div className="space-y-2 text-sm">
         <div className="flex items-center gap-2">

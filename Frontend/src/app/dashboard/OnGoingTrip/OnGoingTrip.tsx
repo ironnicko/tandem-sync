@@ -24,8 +24,13 @@ export const OnGoingTrip = () => {
     <>
       <Profile className="absolute top-4 left-[12vw] flex flex-col items-center" />
 
-      <div className="absolute top-4 right-6 flex gap-2 max-w-sm">
-        {showTripInfo && <CurrentTripInfo ride={ride} />}
+      <div className="absolute top-4 right-6 flex items-start gap-2 max-w-sm">
+        {showTripInfo && (
+          <CurrentTripInfo
+            ride={ride}
+            participantsOpen={showParticipants}
+          />
+        )}
         {showParticipants && (
           <RideParticipants ride={ride} otherUsers={otherUsers} />
         )}
