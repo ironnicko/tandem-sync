@@ -30,7 +30,6 @@ export default function Announcer() {
     resetActivity();
   };
 
-  // 🔹 Auto scroll to bottom
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;

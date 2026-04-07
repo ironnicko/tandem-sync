@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useUserSubscription } from "@/hooks/useUserSubscription";
 
 interface ProfileProps {
   className: string;
@@ -12,6 +13,7 @@ interface ProfileProps {
 
 export const Profile = ({ className }: ProfileProps) => {
   const { user, logout } = useAuth();
+  const { unsubscribeUser } = useUserSubscription();
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
 
@@ -36,9 +38,10 @@ export const Profile = ({ className }: ProfileProps) => {
           </li>
 
           <li
-            onClick={() => {
+            onClick={async () => {
               router.replace("/signin");
-              logout();
+              await unsubscribeUser();
+              await logout();
             }}
             className="px-2 py-2 hover:bg-gray-100 cursor-pointer text-red-500"
           >

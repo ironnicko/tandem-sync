@@ -72,8 +72,8 @@ export default function JoinRidePage() {
     return <p className="text-center mt-10">Loading ride details...</p>;
   if (error)
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-6">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center flex flex-col items-center gap-6">
+      <div className="flex flex-col items-center justify-center bg-gray-50 px-6">
+        <div className="bg-white rounded-2xl shadow-lg p-8 text-center flex flex-col items-center gap-6">
           <div className="relative">
             <Bike className="w-16 h-16 text-gray-300" />
             <div className="absolute -top-1 -right-1 bg-white rounded-full p-1 border-2 border-red-50">
@@ -109,8 +109,8 @@ export default function JoinRidePage() {
     return <p className="text-center mt-10">Sorry This Trip is Full!</p>;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-6">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-6 text-center">
+    <div className="flex flex-col items-center justify-center bg-gray-50 px-6">
+      <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
         {/* Header */}
         <div className="mb-3 text-center">
           <h2 className="flex flex-row gap-4 text-2xl font-bold items-center justify-center">

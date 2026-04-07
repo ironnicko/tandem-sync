@@ -18,8 +18,8 @@ export default function InstallPrompt() {
     if (dismissed) {
       const dismissedAt = parseInt(dismissed, 10);
       const now = Date.now();
-      // Only show again if it's been more than 7 days
-      if (now - dismissedAt < 7 * 24 * 60 * 60 * 1000) {
+      // Only show again if it's been more than 1 days
+      if (now - dismissedAt < 1 * 24 * 60 * 60 * 1000) {
         setIsDismissed(true);
         return;
       }
@@ -103,7 +103,7 @@ export default function InstallPrompt() {
               <div className="flex-shrink-0">
                 <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg shadow-blue-500/20">
                   <Image
-                    src="/logo.svg"
+                    src="logo.svg"
                     alt="TandemSync Logo"
                     width={40}
                     height={40}

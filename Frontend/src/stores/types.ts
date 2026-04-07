@@ -156,7 +156,7 @@ export interface AuthStore {
   signup: (name: string, email: string, password: string) => Promise<boolean>;
   setUser: (user: UserState) => void;
   loginWithGoogle: (redirect: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 export interface RidesStore {
