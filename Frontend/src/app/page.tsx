@@ -12,11 +12,20 @@ export default function LandingPage() {
 
   const features = [
     {
+      title: "Hassle-free Signaling",
+      description: "Signal your friends without switching apps. Send quick pings to coordinate your ride.",
+      image: "/features/signaling.gif",
+      icon: <MessageSquare className="w-6 h-6 text-orange-500" />,
+      tag: "Instant Ping",
+      isMobile: true,
+    },
+    {
       title: "Real-time Ride Coordination",
       description: "Sync your squad effortlessly. See who's joining, who's ready, and coordinate pickup points in a unified, live dashboard.",
       image: "/features/coordination.png",
       icon: <Users className="w-6 h-6 text-blue-500" />,
       tag: "Social Sync",
+      isMobile: true,
     },
     {
       title: "Real-time Tracking",
@@ -25,13 +34,6 @@ export default function LandingPage() {
       icon: <MapPin className="w-6 h-6 text-emerald-500" />,
       tag: "Live Map",
       isMobile: true,
-    },
-    {
-      title: "Hassle-free Signaling",
-      description: "Signal your friends without switching apps. Send quick pings to coordinate your ride.",
-      image: "/features/signaling.png",
-      icon: <MessageSquare className="w-6 h-6 text-orange-500" />,
-      tag: "Instant Ping",
     },
   ];
 
@@ -61,6 +63,13 @@ export default function LandingPage() {
               onClick={() => router.push("/dashboard")}
             >
               Start a Trip <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+            <Button
+              size="lg"
+              className="h-14 px-8 text-lg cursor-pointer rounded-full bg-primary hover:opacity-90 transition-opacity"
+              onClick={() => router.push("/joinRide?rideCode=4356d086&invitedBy=69d1494b943c6b06ff877c4e")}
+            >
+              Join Puluthi Ride<ArrowRight className="ml-2 w-5 h-5" />
             </Button>
             <Button
               size="lg"
