@@ -115,7 +115,7 @@ export default function LandingPage() {
               <video
                 ref={videoRef}
                 className="w-full h-full object-cover"
-                src="https://github.com/user-attachments/assets/3ba68de9-3ff8-4ccd-8832-4ca4bce1fc8a"
+                src="https://tandem-sync.s3.ap-south-1.amazonaws.com/tandem-sync-video.mp4"
                 controls
                 playsInline
               />
