@@ -11,15 +11,25 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#000000",
     icons: [
       {
-        src: '/logo.svg',
-        sizes: '192x192',
-        type: 'image/svg',
+        src: "/logo.svg",
+        sizes: "192x192",
+        type: "image/svg",
       },
       {
-        src: '/logo.svg',
-        sizes: '512x512',
-        type: 'image/svg',
+        src: "/logo.svg",
+        sizes: "512x512",
+        type: "image/svg",
       },
     ],
+    // @ts-ignore - protocol_handlers and launch_handler are valid Web Manifest fields but may not be in the the current Next.js type.
+    protocol_handlers: [
+      {
+        protocol: "web+tandem",
+        url: "/join?code=%s",
+      },
+    ],
+    launch_handler: {
+      client_mode: ["focus-existing", "auto"],
+    },
   };
 }
