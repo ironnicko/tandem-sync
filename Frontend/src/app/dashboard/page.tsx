@@ -93,9 +93,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!userLocation || !toLocation) {
-      updateDashboard({
-        routeData: null,
-      });
+      updateDashboard({ routeData: null });
       return;
     }
 
@@ -121,8 +119,11 @@ export default function DashboardPage() {
         console.error("Route fetch failed:", err);
       }
     };
-
-    fetchRoute();
+    let fetchRouteID = null;
+    let delay = 0;
+    if (routeData) delay = 60 * 1000;
+    fetchRouteID = setTimeout(fetchRoute, delay);
+    return () => clearTimeout(fetchRouteID);
   }, [userLocation, toLocation]);
 
   if (!userLocation) {
@@ -201,12 +202,10 @@ const LoaderScreen = () => (
       <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
     </div>
     <div className="space-y-2 max-w-xs">
-      <h2 className="text-xl font-semibold tracking-tight">
-        Syncing Location
-      </h2>
+      <h2 className="text-xl font-semibold tracking-tight">Syncing Location</h2>
       <p className="text-muted-foreground text-sm leading-relaxed">
         Please turn on Location Services to Continue if stuck...
       </p>
     </div>
   </div>
-)
+);
